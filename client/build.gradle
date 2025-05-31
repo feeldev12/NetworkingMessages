@@ -11,3 +11,17 @@ dependencies {
 
     implementation project(path: ':common', configuration: 'dev')
 }
+
+publishing {
+    publications {
+        named('maven', MavenPublication) { // Accedemos a la publicación 'maven' ya existente
+            artifacts.clear() // Limpiamos los artefactos por defecto (que podrían ser el JAR no remapeado)
+            artifact tasks.named('remapJar') // Usamos el output de la tarea remapJar de Loom
+
+            // Opcional: si también quieres publicar las fuentes
+            // artifact(tasks.named('sourcesJar')) {
+            //     classifier = "sources"
+            // }
+        }
+    }
+}

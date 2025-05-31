@@ -23,10 +23,10 @@ subprojects {
     publishing {
         publications {
             register('maven', MavenPublication) {
-                // Las coordenadas se toman de las propiedades del proyecto
-                // groupId y version ya están definidos arriba para el subproyecto
-                // artifactId será el nombre del subproyecto (common, server, client)
-                from components.java // Publica el JAR principal del módulo
+                groupId = project.group
+                artifactId = project.name
+                version = project.version
+                from components.java // <-- ESTA LÍNEA ES LA CLAVE
             }
         }
     }
