@@ -1,4 +1,4 @@
-group = 'me.feldev'
+group = 'me.feeldev'
 version = '1.0-SNAPSHOT'
 
 configure(subprojects.findAll { it.name == 'common' }) {
