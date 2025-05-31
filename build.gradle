@@ -1,0 +1,6 @@
+group = 'me.feldev'
+version = '1.0-SNAPSHOT'
+
+configure(subprojects.findAll { it.name == 'common' }) {
+    apply plugin: 'java'
+}

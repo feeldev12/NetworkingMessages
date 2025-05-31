@@ -1,0 +1,70 @@
+plugins {
+    id 'com.gradleup.shadow' version '8.3.6'
+    id 'java'
+}
+
+version = project.project_version
+group = project.maven_group
+
+repositories {
+    mavenCentral()
+    maven {
+        name = "papermc-repo"
+        url = "https://repo.papermc.io/repository/maven-public/"
+    }
+    maven {
+        name = "sonatype"
+        url = "https://oss.sonatype.org/content/groups/public/"
+    }
+    maven {
+        url = "https://repo.aikar.co/content/groups/aikar/"
+    }
+}
+
+dependencies {
+    compileOnly("io.papermc.paper:paper-api:${project.minecraft_version}-R0.1-SNAPSHOT")
+    compileOnly("io.netty:netty-all:4.1.68.Final")
+    implementation("co.aikar:acf-paper:0.5.1-SNAPSHOT")
+
+    implementation project(path: ':common', configuration: 'dev')
+}
+
+shadowJar {
+    relocate "co.aikar.commands", "me.feldev.${project.mod_id}.libs.acf"
+    relocate "co.aikar.locales", "me.feldev.${project.mod_id}.libs.locales"
+}
+
+def targetJavaVersion = 17
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+
+    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+        options.release.set(targetJavaVersion)
+    }
+
+    options.compilerArgs += ["-parameters"]
+    options.fork = true
+    options.forkOptions.executable = System.getProperty("java.home") + "/bin/javac.exe"
+}
+
+tasks.named('build') {
+    dependsOn(tasks.named('shadowJar'))
+}
+
+processResources {
+    def props = [version: version]
+    inputs.properties props
+    filteringCharset 'UTF-8'
+    filesMatching('plugin.yml') {
+        expand props
+    }
+}

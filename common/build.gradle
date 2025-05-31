@@ -1,0 +1,29 @@
+plugins {
+    id 'java'
+    id 'maven-publish'
+}
+version = project.project_version
+group = project.maven_group
+
+base {
+    archivesName = "${project.archives_base_name}-common-${project.minecraft_version}"
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compileOnly("org.slf4j:slf4j-api:2.0.7")
+}
+
+configurations {
+    dev {
+        canBeResolved = false
+        canBeConsumed = true
+    }
+}
+
+artifacts {
+    dev jar
+}
