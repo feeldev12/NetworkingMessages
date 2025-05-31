@@ -17,22 +17,13 @@ repositories {
         name = "sonatype"
         url = "https://oss.sonatype.org/content/groups/public/"
     }
-    maven {
-        url = "https://repo.aikar.co/content/groups/aikar/"
-    }
 }
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:${project.minecraft_version}-R0.1-SNAPSHOT")
     compileOnly("io.netty:netty-all:4.1.68.Final")
-    implementation("co.aikar:acf-paper:0.5.1-SNAPSHOT")
 
     implementation project(path: ':common', configuration: 'dev')
-}
-
-shadowJar {
-    relocate "co.aikar.commands", "me.feldev.${project.mod_id}.libs.acf"
-    relocate "co.aikar.locales", "me.feldev.${project.mod_id}.libs.locales"
 }
 
 def targetJavaVersion = 21
@@ -51,14 +42,6 @@ tasks.withType(JavaCompile).configureEach {
     if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
         options.release.set(targetJavaVersion)
     }
-
-    options.compilerArgs += ["-parameters"]
-    options.fork = true
-    options.forkOptions.executable = System.getProperty("java.home") + "/bin/javac.exe"
-}
-
-tasks.named('build') {
-    dependsOn(tasks.named('shadowJar'))
 }
 
 processResources {
