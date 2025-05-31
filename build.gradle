@@ -1,17 +1,9 @@
 group = 'me.feeldev'
 version = '1.0.0'
 
-configure(subprojects.findAll { it.name == 'common' }) {
-    apply plugin: 'java'
-}
-
 subprojects {
     apply(plugin: 'java-library')
     apply(plugin: 'maven-publish')
-
-    java {
-        toolchain.languageVersion.set(JavaLanguageVersion.of(21))
-    }
 
     repositories {
         mavenCentral()
@@ -19,22 +11,22 @@ subprojects {
         maven { url 'https://maven.fabricmc.net/' }
     }
 
-    // Configuramos la versión de Java para todos
     java {
         toolchain.languageVersion = JavaLanguageVersion.of(21)
     }
 
-    // Configuramos la publicación para todos
+    tasks.withType(JavaCompile) { // Configura la compilación de Java
+        options.encoding = 'UTF-8'
+        options.release = 21 // Si tu JavaLanguagueVersion es 21
+    }
+
     publishing {
         publications {
             register('maven', MavenPublication) {
                 // Las coordenadas se toman de las propiedades del proyecto
-                groupId = project.group
-                artifactId = project.name // El nombre del módulo (e.g., 'common')
-                version = project.version
-
-                // El contenido será el JAR generado por Java
-                from components.java
+                // groupId y version ya están definidos arriba para el subproyecto
+                // artifactId será el nombre del subproyecto (common, server, client)
+                from components.java // Publica el JAR principal del módulo
             }
         }
     }
