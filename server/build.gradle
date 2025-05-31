@@ -1,6 +1,7 @@
 plugins {
     id 'com.gradleup.shadow' version '8.3.6'
     id 'java'
+    id 'maven-publish'
 }
 
 version = project.project_version
