@@ -1,5 +1,5 @@
-group = 'com.github.feeldev12' // TU USUARIO DE GITHUB
-version = 'v1.0.0' // USA UN TAG DE GIT
+group = 'me.feeldev' // TU USUARIO DE GITHUB
+version = '1.0-SNAPSHOT' // USA UN TAG DE GIT
 
 subprojects {
     apply(plugin: 'java-library')
