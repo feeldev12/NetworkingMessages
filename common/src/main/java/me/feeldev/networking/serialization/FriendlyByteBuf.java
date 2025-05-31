@@ -1,4 +1,4 @@
-package me.feeldev.networking.models;
+package me.feeldev.networking.serialization;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -6,6 +6,7 @@ import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.DecoderException;
 import io.netty.handler.codec.EncoderException;
 import io.netty.util.ByteProcessor;
+import me.feeldev.networking.exceptions.CustomSerializerException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,6 +30,31 @@ public class FriendlyByteBuf extends ByteBuf {
 
     public FriendlyByteBuf() {
         this(Unpooled.buffer());
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> void writeCustomObject(T object) {
+        if (object == null) {
+            writeBoolean(false);
+            return;
+        }
+        writeBoolean(true);
+
+        Class<T> clazz = (Class<T>) object.getClass();
+
+        SerializerRegistry.INSTANCE.get(clazz)
+                .orElseThrow(() -> new CustomSerializerException("No serializer registered for class: " + clazz.getName()))
+                .write(this, object);
+    }
+
+    public <T> T readCustomObject(Class<T> clazz) {
+        if (!readBoolean()) {
+            return null;
+        }
+
+        return SerializerRegistry.INSTANCE.get(clazz)
+                .orElseThrow(() -> new CustomSerializerException("No serializer registered for class: " + clazz.getName()))
+                .read(this);
     }
 
     public ByteBuf getUnderlyingByteBuf() {

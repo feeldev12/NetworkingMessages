@@ -5,7 +5,6 @@ import me.feeldev.networking.exceptions.MessageNullException;
 import me.feeldev.networking.exceptions.RegistryMessageException;
 import me.feeldev.networking.models.AbstractMessage;
 import me.feeldev.networking.models.MessageType;
-import org.apache.logging.log4j.message.Message;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.messaging.PluginMessageListener;
@@ -50,11 +49,11 @@ public class MessagesManager {
         plugin.getServer().getMessenger().unregisterOutgoingPluginChannel(plugin);
     }
 
-    public void sendMessage(AbstractMessage<?> message) {
-        sendMessage(null, message);
+    public void sendMessageToClient(AbstractMessage<?> message) {
+        sendMessageToClient(null, message);
     }
 
-    public void sendMessage(Player player, AbstractMessage<?> message) {
+    public void sendMessageToClient(Player player, AbstractMessage<?> message) {
         MessageType messageType = getMessageTypeByClass(message);
         if(messageType == null) {
             throw new RegistryMessageException("Message " + message.getClass().getSimpleName() + " not registered");
