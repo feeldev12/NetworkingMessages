@@ -1,7 +1,3 @@
-plugins {
-    id 'java'
-    id 'maven-publish'
-}
 version = project.project_version
 group = project.maven_group
 

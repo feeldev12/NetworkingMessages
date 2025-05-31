@@ -1,6 +1,41 @@
 group = 'me.feeldev'
-version = '1.0-SNAPSHOT'
+version = '1.0.0'
 
 configure(subprojects.findAll { it.name == 'common' }) {
     apply plugin: 'java'
+}
+
+subprojects {
+    apply(plugin: 'java-library')
+    apply(plugin: 'maven-publish')
+
+    java {
+        toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+    }
+
+    repositories {
+        mavenCentral()
+        maven { url 'https://repo.papermc.io/repository/maven-public/' }
+        maven { url 'https://maven.fabricmc.net/' }
+    }
+
+    // Configuramos la versión de Java para todos
+    java {
+        toolchain.languageVersion = JavaLanguageVersion.of(21)
+    }
+
+    // Configuramos la publicación para todos
+    publishing {
+        publications {
+            register('maven', MavenPublication) {
+                // Las coordenadas se toman de las propiedades del proyecto
+                groupId = project.group
+                artifactId = project.name // El nombre del módulo (e.g., 'common')
+                version = project.version
+
+                // El contenido será el JAR generado por Java
+                from components.java
+            }
+        }
+    }
 }
