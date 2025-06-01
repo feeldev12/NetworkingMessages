@@ -21,12 +21,16 @@ public abstract class AbstractMessage<T extends AbstractMessage<T>> implements I
 
     @Override
     public Id<T> getId() {
-        return this.id == null ? getId(namespace == null ? "minecraft" : namespace) : this.id;
+        return this.id;
     }
 
     public void setNamespace(String namespace) {
         this.namespace = namespace;
         this.id = getId(namespace);
+    }
+
+    public void setMessageType(MessageType messageType) {
+        this.messageType = messageType;
     }
 
     public void setId(Id<T> id) {

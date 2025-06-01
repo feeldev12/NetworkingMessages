@@ -38,8 +38,9 @@ public class MessagesManager {
         PayloadTypeRegistry.playC2S().register(id, message);
         PayloadTypeRegistry.playS2C().register(id, message);
         ClientPlayNetworking.registerGlobalReceiver(id, (abstractMessage, context) -> {
-
-            message.handler(context);
+            abstractMessage.setMessageType(messageType);
+            abstractMessage.setNamespace(namespace);
+            abstractMessage.handler(context);
         });
 
         CommonAPI.LOGGER.info("Registered message: {}", id.id().toString());
