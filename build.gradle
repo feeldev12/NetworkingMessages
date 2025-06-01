@@ -20,13 +20,15 @@ subprojects {
         options.release = 21 // Si tu JavaLanguagueVersion es 21
     }
 
-    publishing {
-        publications {
-            register('maven', MavenPublication) {
-                groupId = project.group
-                artifactId = project.name
-                version = project.version
-                from components.java // <-- ESTA LÍNEA ES LA CLAVE
+    if (project.name != 'client') {
+        publishing {
+            publications {
+                register("maven", MavenPublication) {
+                    groupId = project.group
+                    artifactId = project.name
+                    version = project.version
+                    from components.java // <-- ESTA LÍNEA ES LA CLAVE
+                }
             }
         }
     }
