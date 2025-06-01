@@ -5,12 +5,6 @@ subprojects {
     apply(plugin: 'java-library')
     apply(plugin: 'maven-publish')
 
-    repositories {
-        mavenCentral()
-        maven { url 'https://repo.papermc.io/repository/maven-public/' }
-        maven { url 'https://maven.fabricmc.net/' }
-    }
-
     java {
         toolchain.languageVersion = JavaLanguageVersion.of(21)
     }
