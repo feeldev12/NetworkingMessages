@@ -24,17 +24,12 @@ tasks.withType(JavaCompile).configureEach {
 // 🔥 PUBLICA EL JAR LIMPIO, NO remapJar
 publishing {
     publications {
-        register("maven", MavenPublication) {
+        register('maven', MavenPublication) {
             groupId = project.group
             artifactId = project.name
             version = project.version
 
-            artifact tasks.named("jar") // ✅ jar limpio, sin remap
+            artifact(tasks.named("jar")) // <--- OJO: no uses remapJar aquí
         }
     }
-}
-
-// 🔒 DESHABILITA remapJar por seguridad
-tasks.named("remapJar").configure {
-    enabled = false
 }
