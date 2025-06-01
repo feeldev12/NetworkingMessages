@@ -37,9 +37,12 @@ public class MessagesManager {
         CustomPayload.Id<? extends AbstractMessage<?>> id = message.getId();
         PayloadTypeRegistry.playC2S().register(id, message);
         PayloadTypeRegistry.playS2C().register(id, message);
-        ClientPlayNetworking.registerGlobalReceiver(id, IPluginMessage::handler);
+        ClientPlayNetworking.registerGlobalReceiver(id, (abstractMessage, context) -> {
 
-        CommonAPI.LOGGER.info("Registered message: {}", messageType.getChannelId());
+            abstractMessage.handler(context);
+        });
+
+        CommonAPI.LOGGER.info("Registered message: {}", id.id().toString());
     }
 
     public Map<MessageType, AbstractMessage<?>> getMessages() {

@@ -4,7 +4,7 @@ import me.feeldev.networking.interfaces.IModMessage;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public abstract class AbstractMessage<T extends AbstractMessage<T>> implements IModMessage<T> {
-    private MessageType type;
+    protected MessageType type;
     protected JavaPlugin plugin;
 
     public AbstractMessage(JavaPlugin plugin, MessageType type) {
