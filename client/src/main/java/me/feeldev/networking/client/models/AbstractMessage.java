@@ -15,12 +15,6 @@ public abstract class AbstractMessage<T extends AbstractMessage<T>> implements I
         this.messageType = messageType;
     }
 
-    public AbstractMessage() {
-
-    }
-
-
-
     public MessageType getMessageType() {
         return messageType;
     }
