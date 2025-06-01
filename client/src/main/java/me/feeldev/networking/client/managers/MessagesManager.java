@@ -15,21 +15,24 @@ import java.util.Map;
 
 public class MessagesManager {
     private final Map<MessageType, AbstractMessage<?>> messages;
+    private final Map<Class<?>, AbstractMessage<?>> classTypes;
+
     private final String namespace;
 
     public MessagesManager(String namespace) {
         this.messages = new HashMap<>();
+        this.classTypes = new HashMap<>();
         this.namespace = namespace;
     }
 
     public void registerMessage(MessageType messageType, @NotNull AbstractMessage message) {
-        if(messages.containsKey(messageType)) {
+        if(classTypes.containsKey(message.getClass())) {
             throw new RegistryMessageException("Message already registered");
         }
+        message.setNamespace(namespace);
 
         messages.put(messageType, message);
-
-        message.setNamespace(namespace);
+        classTypes.put(message.getClass(), message);
 
         CustomPayload.Id<? extends AbstractMessage<?>> id = message.getId();
         PayloadTypeRegistry.playC2S().register(id, message);
@@ -44,7 +47,13 @@ public class MessagesManager {
     }
 
     public void sendMessageToServer(AbstractMessage<?> abstractMessage) {
-        abstractMessage.setNamespace(namespace);
+        if(!classTypes.containsKey(abstractMessage.getClass())) {
+            throw new RegistryMessageException("Message " + abstractMessage.getClass().getSimpleName() + " not registered");
+        }
+
+        AbstractMessage message = classTypes.get(abstractMessage.getClass());
+        abstractMessage.setId(message.getId());
+
         ClientPlayNetworking.send(abstractMessage);
     }
 
