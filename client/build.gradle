@@ -25,29 +25,24 @@ tasks.named('remapJar', net.fabricmc.loom.task.RemapJarTask) {
     }
 }
 
-// SOLUCIÓN: Deshabilitar el jar normal para evitar conflictos
+// Opción más simple - no tocar jar y solo configurar publishing
 jar {
-    enabled = false  // Cambiado de true a false
+    enabled = true
 }
 
-// Configurar sourcesJar
 java {
     withSourcesJar()
 }
-
-// Publishing corregido - Solo usar remapJar
-publishing {
-    publications {
-        named("maven", MavenPublication) {
-            groupId = rootProject.group
-            artifactId = rootProject.name
-            version = rootProject.version
-
-            // Solo el remapJar como artefacto principal
-            artifact remapJar
-
-            // OPCIONAL: Si quieres incluir sources, descomenta la siguiente línea
-            // artifact sourcesJar
-        }
-    }
-}
+//
+//publishing {
+//    publications {
+//        named("maven", MavenPublication) {
+//            groupId = rootProject.group
+//            artifactId = rootProject.name
+//            version = rootProject.version
+//
+//            // Usar from components.java para publicación estándar
+//            from components.java
+//        }
+//    }
+//}
