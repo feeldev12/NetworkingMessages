@@ -45,9 +45,9 @@ publishing {
 
             // Solo el remapJar como artefacto principal
             artifact remapJar
-
-            // Sources jar referenciado correctamente
-            artifact tasks.sourcesJar
+//
+//            // Sources jar referenciado correctamente
+//            artifact tasks.sourcesJar
         }
     }
 }
