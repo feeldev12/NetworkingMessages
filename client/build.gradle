@@ -2,10 +2,6 @@ plugins {
     id 'fabric-loom' version '1.9-SNAPSHOT'
 }
 
-group = rootProject.group
-version = rootProject.version
-
-
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
@@ -14,22 +10,4 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
     implementation project(':common')
-}
-
-tasks.withType(JavaCompile).configureEach {
-    options.encoding = "UTF-8"
-    options.release = 21
-}
-
-// 🔥 PUBLICA EL JAR LIMPIO, NO remapJar
-publishing {
-    publications {
-        register('maven', MavenPublication) {
-            groupId = project.group
-            artifactId = project.name
-            version = project.version
-
-            artifact(tasks.named("jar")) // <--- OJO: no uses remapJar aquí
-        }
-    }
 }
