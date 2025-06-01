@@ -11,3 +11,27 @@ dependencies {
 
     implementation project(':common')
 }
+
+tasks.register("sourcesJar", Jar) {
+    archiveClassifier.set("sources")
+    from sourceSets.main.allSource
+}
+
+publishing {
+    publications {
+        named("maven", MavenPublication) {
+            groupId = project.group
+            artifactId = project.name
+            version = project.version
+
+            artifact(remapJar) {
+                builtBy remapJar
+            }
+
+            artifact(tasks.named("sourcesJar").get()) {
+                classifier = "sources"
+                builtBy tasks.named("sourcesJar").get()
+            }
+        }
+    }
+}

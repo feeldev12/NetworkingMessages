@@ -26,7 +26,7 @@ subprojects {
                 groupId = project.group
                 artifactId = project.name
                 version = project.version
-                artifact(tasks.named("jar"))
+                from components.java // <-- ESTA LÍNEA ES LA CLAVE
             }
         }
     }
