@@ -26,7 +26,7 @@ public class MessagesManager {
 
     public void registerMessage(MessageType messageType, @NotNull AbstractMessage message) {
         if(classTypes.containsKey(message.getClass())) {
-            throw new RegistryMessageException("Message already registered");
+            throw new RegistryMessageException("Message " + messageType.getChannelIdWithNamespace() + " already registered");
         }
 
         messages.put(messageType, message);
@@ -37,7 +37,7 @@ public class MessagesManager {
         PayloadTypeRegistry.playS2C().register(id, message);
         ClientPlayNetworking.registerGlobalReceiver(id, IPluginMessage::handler);
 
-        CommonAPI.LOGGER.info("Registered message: {}", id.id().toString());
+        CommonAPI.LOGGER.info("Registered message: {}", messageType.getChannelIdWithNamespace());
     }
 
     public Map<MessageType, AbstractMessage<?>> getMessages() {
@@ -46,7 +46,11 @@ public class MessagesManager {
 
     public void sendMessageToServer(AbstractMessage<?> abstractMessage) {
         if(!classTypes.containsKey(abstractMessage.getClass())) {
-            throw new RegistryMessageException("Message " + abstractMessage.getClass().getSimpleName() + " not registered");
+            throw new RegistryMessageException("Message " + abstractMessage.getMessageType().getChannelIdWithNamespace() + " not registered");
+        }
+
+        if(!abstractMessage.getMessageType().isServerListener()) {
+            throw new RegistryMessageException("Message " + abstractMessage.getMessageType().getChannelIdWithNamespace() + " is not a server listener");
         }
 
         ClientPlayNetworking.send(abstractMessage);

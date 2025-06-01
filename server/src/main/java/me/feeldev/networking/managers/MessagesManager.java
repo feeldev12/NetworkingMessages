@@ -31,7 +31,7 @@ public class MessagesManager {
 
     public void registerMessage(MessageType messageType, AbstractMessage<?> message) {
         if(classTypes.containsKey(message.getClass())) {
-            throw new RegistryMessageException("Message already registered");
+            throw new RegistryMessageException("Message " + messageType.getChannelIdWithNamespace() + " already registered");
         }
 
         messages.put(messageType, message);
@@ -56,12 +56,12 @@ public class MessagesManager {
     public void sendMessageToClient(Player player, AbstractMessage<?> message) {
         MessageType messageType = getMessageTypeByClass(message);
         if(messageType == null) {
-            throw new RegistryMessageException("Message " + message.getClass().getSimpleName() + " not registered");
+            throw new RegistryMessageException("Message " + message.getMessageType().getChannelIdWithNamespace() + " not registered");
         }
         byte[] messageBytes = messages.get(messageType).sendMessage(message);
 
         if(messageBytes == null) {
-            throw new MessageNullException(" message bytes in " + message.getClass().getSimpleName() + " is null");
+            throw new MessageNullException(" message bytes in " + message.getMessageType().getChannelIdWithNamespace() + " is null");
         }
         if(player == null) {
             plugin.getServer().sendPluginMessage(plugin, namespace + messageType.getChannelId(), messageBytes);
@@ -77,7 +77,7 @@ public class MessagesManager {
     public void deactivateMessage(Player player, MessageType messageType) {
         byte[] messageBytes = messages.get(messageType).deactivateMessage();
         if(messageBytes == null) {
-            throw new MessageNullException(" message bytes in " + messageType.getChannelId() + " is null");
+            throw new MessageNullException("message bytes in " + messageType.getChannelIdWithNamespace() + " is null");
         }
         if(player == null) {
             plugin.getServer().sendPluginMessage(plugin, namespace + messageType.getChannelId(), messageBytes);
