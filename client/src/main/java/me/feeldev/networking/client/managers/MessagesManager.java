@@ -28,7 +28,6 @@ public class MessagesManager {
         if(classTypes.containsKey(message.getClass())) {
             throw new RegistryMessageException("Message already registered");
         }
-        messageType.setNamespace(namespace);
 
         messages.put(messageType, message);
         classTypes.put(message.getClass(), message);

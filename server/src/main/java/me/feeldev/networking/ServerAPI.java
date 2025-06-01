@@ -9,7 +9,7 @@ public class ServerAPI {
     private final MessagesManager messagesManager;
 
     public ServerAPI(JavaPlugin javaPlugin, String namespace) {
-        this.typesManager = new TypesManager();
+        this.typesManager = new TypesManager(namespace);
         this.messagesManager = new MessagesManager(javaPlugin, this, namespace);
     }
 

@@ -9,8 +9,10 @@ import java.util.Optional;
 
 public class TypesManager {
     private final Map<String, MessageType> messageTypes;
+    private final String namespace;
 
-    public TypesManager() {
+    public TypesManager(String namespace) {
+        this.namespace = namespace;
         this.messageTypes = new HashMap<>();
     }
 
@@ -20,6 +22,7 @@ public class TypesManager {
             throw new RegistryMessageTypeException("That channelId already exist");
         }
         MessageType messageType = new MessageType(channelId, packetId, serverListener);
+        messageType.setNamespace(namespace);
         messageTypes.put(channelId, messageType);
 
         return messageType;

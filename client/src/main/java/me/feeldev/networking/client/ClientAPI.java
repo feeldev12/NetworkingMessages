@@ -8,7 +8,7 @@ public class ClientAPI {
     private final MessagesManager messagesManager;
 
     public ClientAPI(String namespace) {
-        this.typesManager = new TypesManager();
+        this.typesManager = new TypesManager(namespace);
         this.messagesManager = new MessagesManager(namespace);
     }
 
