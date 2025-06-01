@@ -40,5 +40,5 @@ tasks.withType(JavaCompile).configureEach {
 
     options.compilerArgs += ["-parameters"]
     options.fork = true
-    options.forkOptions.executable = System.getProperty("java.home") + "/bin/javac.exe"
+    options.forkOptions.executable = System.getProperty("java.home") + "/bin/javac"
 }
