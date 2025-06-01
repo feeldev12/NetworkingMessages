@@ -12,16 +12,15 @@ dependencies {
     implementation project(':common')
 }
 
-// En lugar de deshabilitar remapJar, configurarlo para que no remapee
+// Configurar remapJar para mantener nombres Yarn
 tasks.named('remapJar', net.fabricmc.loom.task.RemapJarTask) {
-    // Configurar para que mantenga los nombres originales
     targetNamespace = 'named'
     sourceNamespace = 'named'
 
-    // Configurar el manifest
     manifest {
         attributes([
-                'Fabric-Mapping-Namespace': 'named'
+                'Fabric-Mapping-Namespace': 'named',
+                'Fabric-Jar-Type': 'mod'
         ])
     }
 }
@@ -30,23 +29,25 @@ jar {
     enabled = true
 }
 
-// Publicar solo el jar remapeado
+// Configurar sourcesJar ANTES de usarlo en publishing
+java {
+    withSourcesJar()
+}
+
 // Publishing corregido
 publishing {
     publications {
-        maven(MavenPublication) {
-            // Información del artefacto
-            groupId = project.group
-            artifactId = project.archives_base_name
-            version = project.version
+        named("maven", MavenPublication) {
 
-            // Usar el remapJar configurado
+            groupId = rootProject.group
+            artifactId = rootProject.name
+            version = rootProject.version
+
+            // Solo el remapJar como artefacto principal
             artifact remapJar
+
+            // Sources jar referenciado correctamente
+            artifact tasks.sourcesJar
         }
     }
-}
-
-// Asegurar que sourcesJar esté disponible
-java {
-    withSourcesJar()
 }
