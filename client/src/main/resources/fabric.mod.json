@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "networkingmessages-client",
+  "version": "1.0.0",
+
+  "name": "NetworkingMessages Client",
+  "description": "library for communication between server and client",
+  "authors": [
+    "@feeldev12"
+  ],
+  "contact": {
+    "sources": "https://github.com/Feldev12/Fabric-Template"
+  },
+  "license": "MIT",
+  "environment": "client",
+  "depends": {
+    "fabricloader": ">=0.16.14",
+    "fabric-api": "*",
+    "minecraft": "1.21.1"
+  }
+}

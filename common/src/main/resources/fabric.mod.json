@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "networkingmessages-common",
+  "version": "1.0.0",
+
+  "name": "NetworkingMessages Common",
+  "description": "tools for the library",
+  "authors": [
+    "@feeldev12"
+  ],
+  "contact": {
+    "sources": "https://github.com/Feldev12/Fabric-Template"
+  },
+  "license": "MIT",
+  "environment": "client",
+  "depends": {
+    "fabricloader": ">=0.16.14",
+    "fabric-api": "*",
+    "minecraft": "1.21.1"
+  }
+}

@@ -36,7 +36,7 @@ public class MessagesManager {
         PayloadTypeRegistry.playS2C().register(id, message);
         ClientPlayNetworking.registerGlobalReceiver(id, IPluginMessage::handler);
 
-        CommonAPI.LOGGER.info("Registered message: {}", messageType);
+        CommonAPI.LOGGER.info("Registered message: {}", messageType.getChannelId());
     }
 
     public Map<MessageType, AbstractMessage<?>> getMessages() {
