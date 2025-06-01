@@ -11,13 +11,3 @@ dependencies {
 
     implementation project(':common')
 }
-
-publishing {
-    publications {
-        named('maven', MavenPublication) {
-            artifacts.clear()
-            artifact tasks.named('remapJar')
-            // artifact(tasks.named('sourcesJar')) { classifier = "sources" } // Opcional
-        }
-    }
-}
