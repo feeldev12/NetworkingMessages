@@ -1,22 +1,24 @@
 package me.feeldev.networking.client.models;
 
 import me.feeldev.networking.client.interfaces.IPluginMessage;
+import me.feeldev.networking.client.managers.MessagesManager;
 import me.feeldev.networking.models.MessageType;
 import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.util.Identifier;
 
 public abstract class AbstractMessage<T extends AbstractMessage<T>> implements IPluginMessage<T> {
-    protected MessageType messageType;
-    protected String namespace;
+    protected final MessageType messageType;
 
-    private CustomPayload.Id<T> id;
+    private final CustomPayload.Id<T> id;
 
     public AbstractMessage(MessageType messageType) {
         this.messageType = messageType;
+        this.id = new CustomPayload.Id<>(Identifier.of(messageType.getNamespace(), messageType.getChannelId()));
     }
 
     public AbstractMessage() {
-
+        this.messageType = MessagesManager.getClassTypes().get(this.getClass()).getMessageType();
+        this.id = new CustomPayload.Id<>(Identifier.of(messageType.getNamespace(), messageType.getChannelId()));
     }
 
     public MessageType getMessageType() {
@@ -25,23 +27,6 @@ public abstract class AbstractMessage<T extends AbstractMessage<T>> implements I
 
     @Override
     public Id<T> getId() {
-        return this.id;
-    }
-
-    public void setNamespace(String namespace) {
-        this.namespace = namespace;
-        this.id = getId(namespace);
-    }
-
-    public void setMessageType(MessageType messageType) {
-        this.messageType = messageType;
-    }
-
-    public void setId(Id<T> id) {
-        this.id = id;
-    }
-
-    public CustomPayload.Id<T> getId(String namespace) {
-        return new CustomPayload.Id<>(Identifier.of(namespace, messageType.getChannelId()));
+        return id;
     }
 }

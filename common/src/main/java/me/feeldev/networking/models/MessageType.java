@@ -5,6 +5,8 @@ public class MessageType {
     private final int packetId;
     private final boolean serverListener;
 
+    private String namespace;
+
     public MessageType(String channelId, int packetId) {
         this(channelId, packetId, false);
     }
@@ -21,6 +23,19 @@ public class MessageType {
 
     public String getChannelId() {
         return channelId;
+    }
+
+    public String getChannelIdWithNamespace() {
+        if(namespace == null) return getChannelId();
+        return namespace + ":" + channelId;
+    }
+
+    public void setNamespace(String namespace) {
+        this.namespace = namespace;
+    }
+
+    public String getNamespace() {
+        return namespace;
     }
 
     public boolean isServerListener() {

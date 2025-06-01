@@ -15,13 +15,12 @@ import java.util.Map;
 
 public class MessagesManager {
     private final Map<MessageType, AbstractMessage<?>> messages;
-    private final Map<Class<?>, AbstractMessage<?>> classTypes;
+    private static final Map<Class<?>, AbstractMessage<?>> classTypes = new HashMap<>();
 
     private final String namespace;
 
     public MessagesManager(String namespace) {
         this.messages = new HashMap<>();
-        this.classTypes = new HashMap<>();
         this.namespace = namespace;
     }
 
@@ -29,7 +28,7 @@ public class MessagesManager {
         if(classTypes.containsKey(message.getClass())) {
             throw new RegistryMessageException("Message already registered");
         }
-        message.setNamespace(namespace);
+        messageType.setNamespace(namespace);
 
         messages.put(messageType, message);
         classTypes.put(message.getClass(), message);
@@ -37,11 +36,7 @@ public class MessagesManager {
         CustomPayload.Id<? extends AbstractMessage<?>> id = message.getId();
         PayloadTypeRegistry.playC2S().register(id, message);
         PayloadTypeRegistry.playS2C().register(id, message);
-        ClientPlayNetworking.registerGlobalReceiver(id, (abstractMessage, context) -> {
-            abstractMessage.setMessageType(messageType);
-            abstractMessage.setNamespace(namespace);
-            abstractMessage.handler(context);
-        });
+        ClientPlayNetworking.registerGlobalReceiver(id, IPluginMessage::handler);
 
         CommonAPI.LOGGER.info("Registered message: {}", id.id().toString());
     }
@@ -55,13 +50,14 @@ public class MessagesManager {
             throw new RegistryMessageException("Message " + abstractMessage.getClass().getSimpleName() + " not registered");
         }
 
-        AbstractMessage message = classTypes.get(abstractMessage.getClass());
-        abstractMessage.setId(message.getId());
-
         ClientPlayNetworking.send(abstractMessage);
     }
 
-//    public void sendSpawnLaserMessage() {
+    public static Map<Class<?>, AbstractMessage<?>> getClassTypes() {
+        return classTypes;
+    }
+
+    //    public void sendSpawnLaserMessage() {
 //        ClientPlayNetworking.send(new SpawnLaserMessage());
 //    }
 }
