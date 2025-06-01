@@ -19,6 +19,8 @@ public abstract class AbstractMessage<T extends AbstractMessage<T>> implements I
 
     }
 
+
+
     public MessageType getMessageType() {
         return messageType;
     }
