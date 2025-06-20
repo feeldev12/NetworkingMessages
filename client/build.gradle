@@ -34,15 +34,3 @@ dependencies {
 //    withSourcesJar()
 //}
 //
-//publishing {
-//    publications {
-//        named("maven", MavenPublication) {
-//            groupId = rootProject.group
-//            artifactId = rootProject.name
-//            version = rootProject.version
-//
-//            // Usar from components.java para publicación estándar
-//            from components.java
-//        }
-//    }
-//}
