@@ -11,26 +11,3 @@ dependencies {
 
     implementation project(':common')
 }
-
-//// Configurar remapJar para mantener nombres Yarn
-//tasks.named('remapJar', net.fabricmc.loom.task.RemapJarTask) {
-//    targetNamespace = 'named'
-//    sourceNamespace = 'named'
-//
-//    manifest {
-//        attributes([
-//                'Fabric-Mapping-Namespace': 'named',
-//                'Fabric-Jar-Type': 'mod'
-//        ])
-//    }
-//}
-//
-//// Opción más simple - no tocar jar y solo configurar publishing
-//jar {
-//    enabled = true
-//}
-//
-//java {
-//    withSourcesJar()
-//}
-//
