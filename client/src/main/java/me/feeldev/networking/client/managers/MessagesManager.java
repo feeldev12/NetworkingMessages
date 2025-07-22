@@ -1,6 +1,7 @@
 package me.feeldev.networking.client.managers;
 
 import me.feeldev.networking.CommonAPI;
+import me.feeldev.networking.client.interfaces.IPluginMessage;
 import me.feeldev.networking.client.models.AbstractMessage;
 import me.feeldev.networking.exceptions.RegistryMessageException;
 import me.feeldev.networking.models.MessageType;
@@ -31,9 +32,7 @@ public class MessagesManager {
         classTypes.put(message.getClass(), message);
 
         PacketType<? extends AbstractMessage<?>> id = message.getType();
-        ClientPlayNetworking.registerGlobalReceiver(id, (abstractMessage, clientPlayerEntity, packetSender) -> {
-            message.handler(clientPlayerEntity, packetSender);
-        });
+        ClientPlayNetworking.registerGlobalReceiver(id, IPluginMessage::handler);
 
         CommonAPI.LOGGER.info("Registered message: {}", messageType.getChannelIdWithNamespace());
     }
