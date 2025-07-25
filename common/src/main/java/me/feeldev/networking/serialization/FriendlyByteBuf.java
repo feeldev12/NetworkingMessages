@@ -39,7 +39,7 @@ public class FriendlyByteBuf extends ByteBuf {
     public void detectCompression() {
         Class<?> clazz;
         try {
-            clazz = Class.forName("me.feeldev.networking.server.ServerAPI");
+            clazz = Class.forName("me.feeldev.networking.ServerAPI");
         } catch (ClassNotFoundException ex) {
             try {
                 clazz = Class.forName("me.feeldev.networking.client.ClientAPI");
