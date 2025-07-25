@@ -6,11 +6,11 @@ import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.DecoderException;
 import io.netty.handler.codec.EncoderException;
 import io.netty.util.ByteProcessor;
+import me.feeldev.networking.CommonAPI;
 import me.feeldev.networking.exceptions.CustomSerializerException;
+import me.feeldev.networking.models.NetworkAPI;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
@@ -19,17 +19,69 @@ import java.nio.channels.ScatteringByteChannel;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 public class FriendlyByteBuf extends ByteBuf {
 
     private final ByteBuf buf;
+    private boolean compressed;
 
     public FriendlyByteBuf(ByteBuf byteBuf) {
-        buf = byteBuf;
+        buf = decompressIfGzip(byteBuf);
     }
 
     public FriendlyByteBuf() {
         this(Unpooled.buffer());
+        this.detectCompression();
+    }
+
+    public void detectCompression() {
+        Class<?> clazz;
+        try {
+            clazz = Class.forName("me.feeldev.networking.server.ServerAPI");
+        } catch (ClassNotFoundException ex) {
+            try {
+                clazz = Class.forName("me.feeldev.networking.client.ClientAPI");
+            } catch (ClassNotFoundException ignored) {
+                CommonAPI.LOGGER.warn("Could not detect compression");
+                return;
+            }
+        }
+        NetworkAPI<?> api = (NetworkAPI<?>) clazz.cast(NetworkAPI.class);
+        this.compressed = api.isCompressionEnabled();
+    }
+
+    public void enableCompression(boolean compressed) {
+        this.compressed = compressed;
+    }
+
+    public void disableCompression() {
+        this.compressed = false;
+    }
+
+    public boolean isCompressed() {
+        return compressed;
+    }
+
+    private ByteBuf decompressIfGzip(ByteBuf input) {
+        input.markReaderIndex();
+        if (input.readableBytes() >= 2) {
+            byte b1 = input.readByte();
+            byte b2 = input.readByte();
+            input.resetReaderIndex();
+            if ((b1 == (byte) 0x1F) && (b2 == (byte) 0x8B)) {
+                byte[] compressed = new byte[input.readableBytes()];
+                input.readBytes(compressed);
+                try (GZIPInputStream gzipIn = new GZIPInputStream(new ByteArrayInputStream(compressed))) {
+                    byte[] decompressed = gzipIn.readAllBytes();
+                    return Unpooled.wrappedBuffer(decompressed);
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to decompress GZIP data", e);
+                }
+            }
+        }
+        return input;
     }
 
     @SuppressWarnings("unchecked")
@@ -1070,6 +1122,16 @@ public class FriendlyByteBuf extends ByteBuf {
     }
 
     public byte[] readOnlyNecessaryBytes() {
-        return copy(0, readableBytes()).array();
+        byte[] data = copy(0, readableBytes()).array();
+        if (!isCompressed()) return data;
+
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             GZIPOutputStream gzip = new GZIPOutputStream(baos)) {
+            gzip.write(data);
+            gzip.close();
+            return baos.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to compress", e);
+        }
     }
 }
