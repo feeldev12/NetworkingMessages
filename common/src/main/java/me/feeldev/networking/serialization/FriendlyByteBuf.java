@@ -37,18 +37,11 @@ public class FriendlyByteBuf extends ByteBuf {
     }
 
     public void detectCompression() {
-        Class<?> clazz;
-        try {
-            clazz = Class.forName("me.feeldev.networking.ServerAPI");
-        } catch (ClassNotFoundException ex) {
-            try {
-                clazz = Class.forName("me.feeldev.networking.client.ClientAPI");
-            } catch (ClassNotFoundException ignored) {
-                CommonAPI.LOGGER.warn("Could not detect compression");
-                return;
-            }
+        NetworkAPI<?> api = CommonAPI.getNetworkAPI();
+        if(api == null) {
+            CommonAPI.LOGGER.warn("Could not detect network api");
+            return;
         }
-        NetworkAPI<?> api = (NetworkAPI<?>) clazz.cast(NetworkAPI.class);
         this.compressed = api.isCompressionEnabled();
     }
 

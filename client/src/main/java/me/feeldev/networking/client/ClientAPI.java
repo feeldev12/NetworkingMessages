@@ -1,5 +1,6 @@
 package me.feeldev.networking.client;
 
+import me.feeldev.networking.CommonAPI;
 import me.feeldev.networking.client.managers.MessagesManager;
 import me.feeldev.networking.client.models.AbstractMessage;
 import me.feeldev.networking.managers.TypesManager;
@@ -14,6 +15,7 @@ public class ClientAPI implements NetworkAPI<AbstractMessage<?>> {
         this.typesManager = new TypesManager(namespace);
         this.messagesManager = new MessagesManager(namespace);
         this.compressionEnabled = false;
+        CommonAPI.setNetworkAPI(this);
     }
 
     public TypesManager getTypesManager() {

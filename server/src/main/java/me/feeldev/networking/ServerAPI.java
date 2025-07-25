@@ -15,6 +15,7 @@ public class ServerAPI implements NetworkAPI<AbstractMessage<?>> {
         this.typesManager = new TypesManager(namespace);
         this.messagesManager = new MessagesManager(javaPlugin, this, namespace);
         this.compressionEnabled = false;
+        CommonAPI.setNetworkAPI(this);
     }
 
     public TypesManager getTypesManager() {
