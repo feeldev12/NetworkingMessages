@@ -45,8 +45,8 @@ public class FriendlyByteBuf extends ByteBuf {
         this.compressed = api.isCompressionEnabled();
     }
 
-    public void enableCompression(boolean compressed) {
-        this.compressed = compressed;
+    public void enableCompression() {
+        this.compressed = true;
     }
 
     public void disableCompression() {
