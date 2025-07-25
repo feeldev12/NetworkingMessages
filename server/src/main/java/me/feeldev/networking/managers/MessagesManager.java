@@ -4,6 +4,7 @@ import me.feeldev.networking.ServerAPI;
 import me.feeldev.networking.exceptions.MessageNullException;
 import me.feeldev.networking.exceptions.RegistryMessageException;
 import me.feeldev.networking.models.AbstractMessage;
+import me.feeldev.networking.models.IMessagesManager;
 import me.feeldev.networking.models.MessageType;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -12,7 +13,7 @@ import org.bukkit.plugin.messaging.PluginMessageListener;
 import java.util.HashMap;
 import java.util.Map;
 
-public class MessagesManager {
+public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
     private final Map<MessageType, AbstractMessage> messages;
     private final Map<Class<?>, MessageType> classTypes;
 
@@ -62,22 +63,6 @@ public class MessagesManager {
 
         if(messageBytes == null) {
             throw new MessageNullException(" message bytes in " + message.getMessageType().getChannelIdWithNamespace() + " is null");
-        }
-        if(player == null) {
-            plugin.getServer().sendPluginMessage(plugin, namespace + messageType.getChannelId(), messageBytes);
-            return;
-        }
-        player.sendPluginMessage(plugin, namespace + messageType.getChannelId(), messageBytes);
-    }
-
-    public void deactivateMessage(MessageType messageType) {
-        deactivateMessage(null, messageType);
-    }
-
-    public void deactivateMessage(Player player, MessageType messageType) {
-        byte[] messageBytes = messages.get(messageType).deactivateMessage();
-        if(messageBytes == null) {
-            throw new MessageNullException("message bytes in " + messageType.getChannelIdWithNamespace() + " is null");
         }
         if(player == null) {
             plugin.getServer().sendPluginMessage(plugin, namespace + messageType.getChannelId(), messageBytes);
