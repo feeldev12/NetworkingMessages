@@ -6,12 +6,12 @@ subprojects {
     apply(plugin: 'maven-publish')
 
     java {
-        toolchain.languageVersion = JavaLanguageVersion.of(21)
+        toolchain.languageVersion = JavaLanguageVersion.of(17)
     }
 
     tasks.withType(JavaCompile) {
         options.encoding = 'UTF-8'
-        options.release = 21
+        options.release = 17
     }
 
     publishing {
