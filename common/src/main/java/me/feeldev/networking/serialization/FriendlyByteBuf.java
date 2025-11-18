@@ -163,11 +163,8 @@ public class FriendlyByteBuf extends ByteBuf {
         return this;
     }
 
-    public String readUtf(int maxBytes, boolean compressed) {
+    public String readUtf(boolean compressed) {
         int j = readVarInt();
-        if (j > maxBytes * 4) {
-            throw new DecoderException("The received encoded string buffer length is longer than maximum allowed (" + j + " > " + maxBytes * 4 + ')');
-        }
         if (j < 0) {
             throw new DecoderException("The received encoded string buffer length is less than zero! Weird string!");
         }
@@ -177,40 +174,20 @@ public class FriendlyByteBuf extends ByteBuf {
 
         byte[] finalBytes = compressed ? gunzip(data) : data;
 
-        if (finalBytes.length > maxBytes) {
-            throw new DecoderException("The received string length is longer than maximum allowed (" + j + " > " + maxBytes + ')');
-        }
-
         return new String(finalBytes, StandardCharsets.UTF_8);
     }
 
-    public FriendlyByteBuf writeUtf(String string, int maxBytes) {
-        return writeUtf(string, maxBytes, false);
-    }
-
-    public FriendlyByteBuf writeUtf(String string, int maxBytes, boolean compressed) {
+    public FriendlyByteBuf writeUtf(String string, boolean compressed) {
         byte[] raw = string.getBytes(StandardCharsets.UTF_8);
         byte[] bs = compressed ? gzip(raw) : raw;
 
-        if (bs.length > maxBytes) {
-            throw new EncoderException("String too big (was " + bs.length + " bytes encoded, max " + maxBytes + ')');
-        } else {
-            writeVarInt(bs.length);
-            writeBytes(bs);
-            return this;
-        }
-    }
-
-    public String readUtf(boolean compressed) {
-        return readUtf(32767, compressed);
+        writeVarInt(bs.length);
+        writeBytes(bs);
+        return this;
     }
 
     public String readUtf() {
         return readUtf(false);
-    }
-
-    public FriendlyByteBuf writeUtf(String string, boolean compressed) {
-        return writeUtf(string, 32767, compressed);
     }
 
     public FriendlyByteBuf writeUtf(String string) {
@@ -1151,7 +1128,7 @@ public class FriendlyByteBuf extends ByteBuf {
              GZIPOutputStream gzip = new GZIPOutputStream(baos)) {
 
             gzip.write(input);
-            gzip.finish(); // importante
+            gzip.finish();
             return baos.toByteArray();
 
         } catch (IOException e) {
