@@ -177,13 +177,11 @@ public class FriendlyByteBuf extends ByteBuf {
 
         byte[] finalBytes = compressed ? gunzip(data) : data;
 
-        String string = new String(finalBytes, StandardCharsets.UTF_8);
-
-        if (string.length() > maxBytes) {
+        if (finalBytes.length > maxBytes) {
             throw new DecoderException("The received string length is longer than maximum allowed (" + j + " > " + maxBytes + ')');
-        } else {
-            return string;
         }
+
+        return new String(finalBytes, StandardCharsets.UTF_8);
     }
 
     public FriendlyByteBuf writeUtf(String string, int maxBytes) {
@@ -211,8 +209,12 @@ public class FriendlyByteBuf extends ByteBuf {
         return readUtf(false);
     }
 
+    public FriendlyByteBuf writeUtf(String string, boolean compressed) {
+        return writeUtf(string, 32767, compressed);
+    }
+
     public FriendlyByteBuf writeUtf(String string) {
-        return writeUtf(string, 32767);
+        return writeUtf(string, false);
     }
 
     @Override
