@@ -163,27 +163,39 @@ public class FriendlyByteBuf extends ByteBuf {
         return this;
     }
 
-    public String readUtf(int i) {
+    public String readUtf(int maxBytes, boolean compressed) {
         int j = readVarInt();
-        if (j > i * 4) {
-            throw new DecoderException("The received encoded string buffer length is longer than maximum allowed (" + j + " > " + i * 4 + ')');
-        } else if (j < 0) {
+        if (j > maxBytes * 4) {
+            throw new DecoderException("The received encoded string buffer length is longer than maximum allowed (" + j + " > " + maxBytes * 4 + ')');
+        }
+        if (j < 0) {
             throw new DecoderException("The received encoded string buffer length is less than zero! Weird string!");
+        }
+
+        byte[] data = new byte[j];
+        readBytes(data);
+
+        byte[] finalBytes = compressed ? gunzip(data) : data;
+
+        String string = new String(finalBytes, StandardCharsets.UTF_8);
+
+        if (string.length() > maxBytes) {
+            throw new DecoderException("The received string length is longer than maximum allowed (" + j + " > " + maxBytes + ')');
         } else {
-            String string = toString(readerIndex(), j, StandardCharsets.UTF_8);
-            readerIndex(readerIndex() + j);
-            if (string.length() > i) {
-                throw new DecoderException("The received string length is longer than maximum allowed (" + j + " > " + i + ')');
-            } else {
-                return string;
-            }
+            return string;
         }
     }
 
-    public FriendlyByteBuf writeUtf(String string, int i) {
-        byte[] bs = string.getBytes(StandardCharsets.UTF_8);
-        if (bs.length > i) {
-            throw new EncoderException("String too big (was " + bs.length + " bytes encoded, max " + i + ')');
+    public FriendlyByteBuf writeUtf(String string, int maxBytes) {
+        return writeUtf(string, maxBytes, false);
+    }
+
+    public FriendlyByteBuf writeUtf(String string, int maxBytes, boolean compressed) {
+        byte[] raw = string.getBytes(StandardCharsets.UTF_8);
+        byte[] bs = compressed ? gzip(raw) : raw;
+
+        if (bs.length > maxBytes) {
+            throw new EncoderException("String too big (was " + bs.length + " bytes encoded, max " + maxBytes + ')');
         } else {
             writeVarInt(bs.length);
             writeBytes(bs);
@@ -191,8 +203,12 @@ public class FriendlyByteBuf extends ByteBuf {
         }
     }
 
+    public String readUtf(boolean compressed) {
+        return readUtf(32767, compressed);
+    }
+
     public String readUtf() {
-        return readUtf(32767);
+        return readUtf(false);
     }
 
     public FriendlyByteBuf writeUtf(String string) {
@@ -1125,6 +1141,32 @@ public class FriendlyByteBuf extends ByteBuf {
             return baos.toByteArray();
         } catch (IOException e) {
             throw new RuntimeException("Failed to compress", e);
+        }
+    }
+
+    private static byte[] gzip(byte[] input) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             GZIPOutputStream gzip = new GZIPOutputStream(baos)) {
+
+            gzip.write(input);
+            gzip.finish(); // importante
+            return baos.toByteArray();
+
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to compress UTF string", e);
+        }
+    }
+
+    private static byte[] gunzip(byte[] input) {
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(input);
+             GZIPInputStream gzip = new GZIPInputStream(bais);
+             ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+
+            gzip.transferTo(baos);
+            return baos.toByteArray();
+
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to decompress UTF string", e);
         }
     }
 }
