@@ -4,6 +4,7 @@ import me.feeldev.networking.CommonAPI;
 import me.feeldev.networking.client.interfaces.IPluginMessage;
 import me.feeldev.networking.client.models.AbstractMessage;
 import me.feeldev.networking.exceptions.RegistryMessageException;
+import me.feeldev.networking.models.IMessagesManager;
 import me.feeldev.networking.models.MessageType;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -13,7 +14,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.HashMap;
 import java.util.Map;
 
-public class MessagesManager {
+public class MessagesManager implements IMessagesManager<AbstractMessage<?>>  {
     private final Map<MessageType, AbstractMessage<?>> messages;
     private static final Map<Class<?>, AbstractMessage<?>> classTypes = new HashMap<>();
 
@@ -58,6 +59,16 @@ public class MessagesManager {
 
     public static Map<Class<?>, AbstractMessage<?>> getClassTypes() {
         return classTypes;
+    }
+
+    @Override
+    public void unregister() {
+
+    }
+
+    @Override
+    public MessageType getMessageTypeByClass(AbstractMessage<?> message) {
+        return null;
     }
 
     //    public void sendSpawnLaserMessage() {

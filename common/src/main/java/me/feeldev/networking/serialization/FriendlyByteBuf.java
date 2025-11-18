@@ -6,11 +6,11 @@ import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.DecoderException;
 import io.netty.handler.codec.EncoderException;
 import io.netty.util.ByteProcessor;
+import me.feeldev.networking.CommonAPI;
 import me.feeldev.networking.exceptions.CustomSerializerException;
+import me.feeldev.networking.models.NetworkAPI;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
@@ -19,17 +19,62 @@ import java.nio.channels.ScatteringByteChannel;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 public class FriendlyByteBuf extends ByteBuf {
 
     private final ByteBuf buf;
+    private boolean compressed;
 
     public FriendlyByteBuf(ByteBuf byteBuf) {
-        buf = byteBuf;
+        buf = decompressIfGzip(byteBuf);
     }
 
     public FriendlyByteBuf() {
         this(Unpooled.buffer());
+        this.detectCompression();
+    }
+
+    public void detectCompression() {
+        NetworkAPI<?> api = CommonAPI.getNetworkAPI();
+        if(api == null) {
+            CommonAPI.LOGGER.warn("Could not detect network api");
+            return;
+        }
+        this.compressed = api.isCompressionEnabled();
+    }
+
+    public void enableCompression() {
+        this.compressed = true;
+    }
+
+    public void disableCompression() {
+        this.compressed = false;
+    }
+
+    public boolean isCompressed() {
+        return compressed;
+    }
+
+    private ByteBuf decompressIfGzip(ByteBuf input) {
+        input.markReaderIndex();
+        if (input.readableBytes() >= 2) {
+            byte b1 = input.readByte();
+            byte b2 = input.readByte();
+            input.resetReaderIndex();
+            if ((b1 == (byte) 0x1F) && (b2 == (byte) 0x8B)) {
+                byte[] compressed = new byte[input.readableBytes()];
+                input.readBytes(compressed);
+                try (GZIPInputStream gzipIn = new GZIPInputStream(new ByteArrayInputStream(compressed))) {
+                    byte[] decompressed = gzipIn.readAllBytes();
+                    return Unpooled.wrappedBuffer(decompressed);
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to decompress GZIP data", e);
+                }
+            }
+        }
+        return input;
     }
 
     @SuppressWarnings("unchecked")
@@ -118,27 +163,39 @@ public class FriendlyByteBuf extends ByteBuf {
         return this;
     }
 
-    public String readUtf(int i) {
+    public String readUtf(int maxBytes, boolean compressed) {
         int j = readVarInt();
-        if (j > i * 4) {
-            throw new DecoderException("The received encoded string buffer length is longer than maximum allowed (" + j + " > " + i * 4 + ')');
-        } else if (j < 0) {
+        if (j > maxBytes * 4) {
+            throw new DecoderException("The received encoded string buffer length is longer than maximum allowed (" + j + " > " + maxBytes * 4 + ')');
+        }
+        if (j < 0) {
             throw new DecoderException("The received encoded string buffer length is less than zero! Weird string!");
+        }
+
+        byte[] data = new byte[j];
+        readBytes(data);
+
+        byte[] finalBytes = compressed ? gunzip(data) : data;
+
+        String string = new String(finalBytes, StandardCharsets.UTF_8);
+
+        if (string.length() > maxBytes) {
+            throw new DecoderException("The received string length is longer than maximum allowed (" + j + " > " + maxBytes + ')');
         } else {
-            String string = toString(readerIndex(), j, StandardCharsets.UTF_8);
-            readerIndex(readerIndex() + j);
-            if (string.length() > i) {
-                throw new DecoderException("The received string length is longer than maximum allowed (" + j + " > " + i + ')');
-            } else {
-                return string;
-            }
+            return string;
         }
     }
 
-    public FriendlyByteBuf writeUtf(String string, int i) {
-        byte[] bs = string.getBytes(StandardCharsets.UTF_8);
-        if (bs.length > i) {
-            throw new EncoderException("String too big (was " + bs.length + " bytes encoded, max " + i + ')');
+    public FriendlyByteBuf writeUtf(String string, int maxBytes) {
+        return writeUtf(string, maxBytes, false);
+    }
+
+    public FriendlyByteBuf writeUtf(String string, int maxBytes, boolean compressed) {
+        byte[] raw = string.getBytes(StandardCharsets.UTF_8);
+        byte[] bs = compressed ? gzip(raw) : raw;
+
+        if (bs.length > maxBytes) {
+            throw new EncoderException("String too big (was " + bs.length + " bytes encoded, max " + maxBytes + ')');
         } else {
             writeVarInt(bs.length);
             writeBytes(bs);
@@ -146,8 +203,12 @@ public class FriendlyByteBuf extends ByteBuf {
         }
     }
 
+    public String readUtf(boolean compressed) {
+        return readUtf(32767, compressed);
+    }
+
     public String readUtf() {
-        return readUtf(32767);
+        return readUtf(false);
     }
 
     public FriendlyByteBuf writeUtf(String string) {
@@ -1070,6 +1131,42 @@ public class FriendlyByteBuf extends ByteBuf {
     }
 
     public byte[] readOnlyNecessaryBytes() {
-        return copy(0, readableBytes()).array();
+        byte[] data = copy(0, readableBytes()).array();
+        if (!isCompressed()) return data;
+
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             GZIPOutputStream gzip = new GZIPOutputStream(baos)) {
+            gzip.write(data);
+            gzip.close();
+            return baos.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to compress", e);
+        }
+    }
+
+    private static byte[] gzip(byte[] input) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             GZIPOutputStream gzip = new GZIPOutputStream(baos)) {
+
+            gzip.write(input);
+            gzip.finish(); // importante
+            return baos.toByteArray();
+
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to compress UTF string", e);
+        }
+    }
+
+    private static byte[] gunzip(byte[] input) {
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(input);
+             GZIPInputStream gzip = new GZIPInputStream(bais);
+             ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+
+            gzip.transferTo(baos);
+            return baos.toByteArray();
+
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to decompress UTF string", e);
+        }
     }
 }

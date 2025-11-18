@@ -1,5 +1,5 @@
-group = 'me.feeldev' // TU USUARIO DE GITHUB
-version = '1.0-SNAPSHOT' // USA UN TAG DE GIT
+group = 'me.feeldev'
+version = '1.0-SNAPSHOT'
 
 subprojects {
     apply(plugin: 'java-library')
@@ -9,9 +9,9 @@ subprojects {
         toolchain.languageVersion = JavaLanguageVersion.of(21)
     }
 
-    tasks.withType(JavaCompile) { // Configura la compilación de Java
+    tasks.withType(JavaCompile) {
         options.encoding = 'UTF-8'
-        options.release = 21 // Si tu JavaLanguagueVersion es 21
+        options.release = 21
     }
 
     publishing {
@@ -20,7 +20,7 @@ subprojects {
                 groupId = project.group
                 artifactId = project.name
                 version = project.version
-                from components.java // <-- ESTA LÍNEA ES LA CLAVE
+                from components.java
             }
         }
     }
