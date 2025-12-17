@@ -71,20 +71,21 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
         player.sendPluginMessage(plugin, namespace + messageType.getChannelId(), messageBytes);
     }
 
-    public void deactivateMessage(MessageType messageType) {
-        deactivateMessage(null, messageType);
-    }
+    public void sendMessageTrackerToClient(Player player, AbstractMessage<?> message) {
+        MessageType messageType = getMessageTypeByClass(message);
+        if(messageType == null) {
+            throw new RegistryMessageException("Message " + message.getMessageType().getChannelIdWithNamespace() + " not registered");
+        }
+        byte[] messageBytes = messages.get(messageType).sendMessage(message);
 
-    public void deactivateMessage(Player player, MessageType messageType) {
-        byte[] messageBytes = messages.get(messageType).deactivateMessage();
         if(messageBytes == null) {
-            throw new MessageNullException("message bytes in " + messageType.getChannelIdWithNamespace() + " is null");
+            throw new MessageNullException(" message bytes in " + message.getMessageType().getChannelIdWithNamespace() + " is null");
         }
         if(player == null) {
             plugin.getServer().sendPluginMessage(plugin, namespace + messageType.getChannelId(), messageBytes);
             return;
         }
-        player.sendPluginMessage(plugin, namespace + messageType.getChannelId(), messageBytes);
+        player.getTrackedBy().forEach(trackedPlayer -> trackedPlayer.sendPluginMessage(plugin, namespace + messageType.getChannelId(), messageBytes));
     }
 
     public MessageType getMessageTypeByClass(AbstractMessage<?> message) {

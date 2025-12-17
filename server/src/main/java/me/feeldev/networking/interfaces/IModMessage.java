@@ -7,7 +7,5 @@ public interface IModMessage<T extends AbstractMessage<T>> {
 
     byte[] sendMessage(T message);
 
-    byte[] deactivateMessage();
-
     MessageType getMessageType();
 }
