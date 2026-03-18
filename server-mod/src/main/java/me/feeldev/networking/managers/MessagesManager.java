@@ -7,6 +7,7 @@ import me.feeldev.networking.interfaces.IModMessage;
 import me.feeldev.networking.models.AbstractMessage;
 import me.feeldev.networking.models.IMessagesManager;
 import me.feeldev.networking.models.MessageType;
+import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.EntityTrackingEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -32,8 +33,10 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
 
     private final String namespace;
     private final MinecraftServer server;
+    private final ModInitializer modInitializer;
 
-    public MessagesManager(MinecraftServer server, String namespace) {
+    public MessagesManager(ModInitializer modInitializer, MinecraftServer server, String namespace) {
+        this.modInitializer = modInitializer;
         this.server = server;
         this.messages = new HashMap<>();
         this.namespace = namespace;
@@ -84,6 +87,8 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
             throw new RegistryMessageException("Message " + message.getMessageType().getChannelIdWithNamespace() + " not registered");
         }
 
+        message.setModInitializer(messages.get(messageType).getModInitializer());
+
         if(player == null) {
             server.getPlayerManager().getPlayerList().forEach(player1 -> {
                 ServerPlayNetworking.send(player1, message);
@@ -98,6 +103,8 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
         if(messageType == null) {
             throw new RegistryMessageException("Message " + message.getMessageType().getChannelIdWithNamespace() + " not registered");
         }
+
+        message.setModInitializer(messages.get(messageType).getModInitializer());
 
         if(player == null) {
             server.getPlayerManager().getPlayerList().forEach(player1 -> {
