@@ -4,20 +4,18 @@ import me.feeldev.networking.managers.MessagesManager;
 import me.feeldev.networking.managers.TypesManager;
 import me.feeldev.networking.models.AbstractMessage;
 import me.feeldev.networking.models.NetworkAPI;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.minecraft.server.MinecraftServer;
 
 public class ServerAPI implements NetworkAPI<AbstractMessage<?>> {
-    private TypesManager typesManager;
-    private MessagesManager messagesManager;
+    private final TypesManager typesManager;
+    private final MessagesManager messagesManager;
     private boolean compressionEnabled;
 
-    public ServerAPI(String namespace) {
-        ServerLifecycleEvents.SERVER_STARTING.register(minecraftServer -> {
-            this.typesManager = new TypesManager(namespace);
-            this.messagesManager = new MessagesManager(minecraftServer, namespace);
-            this.compressionEnabled = false;
-            CommonAPI.setNetworkAPI(this);
-        });
+    public ServerAPI(MinecraftServer server, String namespace) {
+        this.typesManager = new TypesManager(namespace);
+        this.messagesManager = new MessagesManager(server, namespace);
+        this.compressionEnabled = false;
+        CommonAPI.setNetworkAPI(this);
     }
 
     public TypesManager getTypesManager() {

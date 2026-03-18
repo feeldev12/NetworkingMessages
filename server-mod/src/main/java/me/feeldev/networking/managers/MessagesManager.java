@@ -50,11 +50,11 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
         classTypes.put(message.getClass(), messageType);
 
         CustomPayload.Id<? extends AbstractMessage<?>> id = message.getId();
+        PayloadTypeRegistry.playS2C().register(id, message);
         if(messageType.isServerListener()) {
             PayloadTypeRegistry.playC2S().register(id, message);
+            ServerPlayNetworking.registerGlobalReceiver(id, IModMessage::handler);
         }
-        PayloadTypeRegistry.playS2C().register(id, message);
-        ServerPlayNetworking.registerGlobalReceiver(id, IModMessage::handler);
     }
 
     @Override
@@ -65,7 +65,9 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
 //                PayloadTypeRegistry.playC2S().unregister(id);
 //            }
 //            PayloadTypeRegistry.playS2C().unregister(id);
-            ServerPlayNetworking.unregisterGlobalReceiver(id.id());
+            if(messageType.isServerListener()) {
+                ServerPlayNetworking.unregisterGlobalReceiver(id.id());
+            }
         });
         messages.clear();
         classTypes.clear();
