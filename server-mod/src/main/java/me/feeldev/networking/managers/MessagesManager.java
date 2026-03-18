@@ -33,10 +33,8 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
 
     private final String namespace;
     private final MinecraftServer server;
-    private final ModInitializer modInitializer;
 
-    public MessagesManager(ModInitializer modInitializer, MinecraftServer server, String namespace) {
-        this.modInitializer = modInitializer;
+    public MessagesManager(MinecraftServer server, String namespace) {
         this.server = server;
         this.messages = new HashMap<>();
         this.namespace = namespace;
