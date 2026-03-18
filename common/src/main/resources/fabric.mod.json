@@ -12,7 +12,7 @@
     "sources": "https://github.com/Feldev12/Fabric-Template"
   },
   "license": "MIT",
-  "environment": "client",
+  "environment": "*",
   "depends": {
     "fabricloader": ">=0.16.9",
     "fabric-api": "*",
