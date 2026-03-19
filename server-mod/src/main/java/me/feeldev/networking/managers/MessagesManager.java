@@ -87,7 +87,8 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
             throw new RegistryMessageException("Message " + message.getMessageType().getChannelIdWithNamespace() + " not registered");
         }
 
-        message.setModInitializer(messages.get(messageType).getModInitializer());
+        AbstractMessage abstractMessage = messages.get(messageType);
+        message.updateProperties(abstractMessage.getModInitializer(), messageType, abstractMessage.getId());
 
         if(player == null) {
             server.getPlayerManager().getPlayerList().forEach(player1 -> {
@@ -104,7 +105,8 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
             throw new RegistryMessageException("Message " + message.getMessageType().getChannelIdWithNamespace() + " not registered");
         }
 
-        message.setModInitializer(messages.get(messageType).getModInitializer());
+        AbstractMessage abstractMessage = messages.get(messageType);
+        message.updateProperties(abstractMessage.getModInitializer(), messageType, abstractMessage.getId());
 
         if(player == null) {
             server.getPlayerManager().getPlayerList().forEach(player1 -> {
