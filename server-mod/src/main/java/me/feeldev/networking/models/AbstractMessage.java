@@ -34,7 +34,9 @@ public abstract class AbstractMessage<T extends AbstractMessage<T>> implements I
         return modInitializer;
     }
 
-    public void setModInitializer(ModInitializer modInitializer) {
+    public void updateProperties(ModInitializer modInitializer, MessageType messageType, Id<T> id) {
         this.modInitializer = modInitializer;
+        this.messageType = messageType;
+        this.id = id;
     }
 }
