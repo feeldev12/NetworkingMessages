@@ -53,7 +53,14 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
         PayloadTypeRegistry.playS2C().register(id, message);
         if(messageType.isServerListener()) {
             PayloadTypeRegistry.playC2S().register(id, message);
-            ServerPlayNetworking.registerGlobalReceiver(id, IModMessage::handler);
+            ServerPlayNetworking.registerGlobalReceiver(id, (payload, context) -> {
+                try {
+                    payload.handler(context);
+                } catch (Exception e) {
+                    CommonAPI.LOGGER.error("[NetworkingMessages] Exception in handler for message: {}", messageType.getChannelIdWithNamespace(), e);
+                    throw e;
+                }
+            });
         }
     }
 

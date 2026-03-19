@@ -36,7 +36,14 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>>  {
         CustomPayload.Id<? extends AbstractMessage<?>> id = message.getId();
         PayloadTypeRegistry.playC2S().register(id, message);
         PayloadTypeRegistry.playS2C().register(id, message);
-        ClientPlayNetworking.registerGlobalReceiver(id, IPluginMessage::handler);
+        ClientPlayNetworking.registerGlobalReceiver(id, (payload, context) -> {
+            try {
+                ((IPluginMessage<?>) payload).handler(context);
+            } catch (Exception e) {
+                CommonAPI.LOGGER.error("[NetworkingMessages] Exception in handler for message: {}", messageType.getChannelIdWithNamespace(), e);
+                throw e;
+            }
+        });
 
         CommonAPI.LOGGER.info("Registered message: {}", messageType.getChannelIdWithNamespace());
     }

@@ -1,5 +1,6 @@
 package me.feeldev.networking.managers;
 
+import me.feeldev.networking.CommonAPI;
 import me.feeldev.networking.ServerAPI;
 import me.feeldev.networking.exceptions.MessageNullException;
 import me.feeldev.networking.exceptions.RegistryMessageException;
@@ -59,7 +60,13 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
         if(messageType == null) {
             throw new RegistryMessageException("Message " + message.getMessageType().getChannelIdWithNamespace() + " not registered");
         }
-        byte[] messageBytes = messages.get(messageType).sendMessage(message);
+        byte[] messageBytes;
+        try {
+            messageBytes = messages.get(messageType).sendMessage(message);
+        } catch (Exception e) {
+            CommonAPI.LOGGER.error("[NetworkingMessages] Exception serializing message: {}", messageType.getChannelIdWithNamespace(), e);
+            throw e;
+        }
 
         if(messageBytes == null) {
             throw new MessageNullException(" message bytes in " + message.getMessageType().getChannelIdWithNamespace() + " is null");
@@ -76,7 +83,13 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
         if(messageType == null) {
             throw new RegistryMessageException("Message " + message.getMessageType().getChannelIdWithNamespace() + " not registered");
         }
-        byte[] messageBytes = messages.get(messageType).sendMessage(message);
+        byte[] messageBytes;
+        try {
+            messageBytes = messages.get(messageType).sendMessage(message);
+        } catch (Exception e) {
+            CommonAPI.LOGGER.error("[NetworkingMessages] Exception serializing message: {}", messageType.getChannelIdWithNamespace(), e);
+            throw e;
+        }
 
         if(messageBytes == null) {
             throw new MessageNullException(" message bytes in " + message.getMessageType().getChannelIdWithNamespace() + " is null");
