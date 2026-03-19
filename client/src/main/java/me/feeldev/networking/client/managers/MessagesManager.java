@@ -38,7 +38,7 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>>  {
         PayloadTypeRegistry.playS2C().register(id, message);
         ClientPlayNetworking.registerGlobalReceiver(id, (payload, context) -> {
             try {
-                ((IPluginMessage<?>) payload).handler(context);
+                payload.handler(context);
             } catch (Exception e) {
                 CommonAPI.LOGGER.error("[NetworkingMessages] Exception in handler for message: {}", messageType.getChannelIdWithNamespace(), e);
                 throw e;

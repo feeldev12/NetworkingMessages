@@ -18,7 +18,14 @@ public abstract class AbstractMessage<T extends AbstractMessage<T>> implements I
         this.id = new CustomPayload.Id<>(Identifier.of(messageType.getNamespace(), messageType.getChannelId()));
     }
 
+    @SuppressWarnings("unchecked")
     public AbstractMessage() {
+        AbstractMessage<?> registered = MessagesManager.getClassInstances().get(this.getClass());
+        if (registered != null) {
+            this.modInitializer = registered.modInitializer;
+            this.messageType = registered.messageType;
+            this.id = (Id<T>) registered.id;
+        }
     }
 
     public MessageType getMessageType() {

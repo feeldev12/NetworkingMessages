@@ -30,6 +30,7 @@ import java.util.Map;
 public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
     private final Map<MessageType, AbstractMessage> messages;
     private final Map<Class<?>, MessageType> classTypes;
+    private static final Map<Class<?>, AbstractMessage<?>> classInstances = new HashMap<>();
 
     private final String namespace;
     private final MinecraftServer server;
@@ -41,6 +42,10 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
         this.classTypes = new HashMap<>();
     }
 
+    public static Map<Class<?>, AbstractMessage<?>> getClassInstances() {
+        return classInstances;
+    }
+
     public void registerMessage(MessageType messageType, @NotNull AbstractMessage message) {
         if(classTypes.containsKey(message.getClass())) {
             throw new RegistryMessageException("Message " + messageType.getChannelIdWithNamespace() + " already registered");
@@ -48,6 +53,7 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
 
         messages.put(messageType, message);
         classTypes.put(message.getClass(), messageType);
+        classInstances.put(message.getClass(), message);
 
         CustomPayload.Id<? extends AbstractMessage<?>> id = message.getId();
         PayloadTypeRegistry.playS2C().register(id, message);
@@ -78,6 +84,7 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
         });
         messages.clear();
         classTypes.clear();
+        classInstances.clear();
     }
 
     public void sendMessageToClient(AbstractMessage<?> message) {
