@@ -1,0 +1,17 @@
+plugins {
+    id 'multiloader-common'
+}
+
+repositories {
+    maven {
+        name = 'spigot'
+        url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/'
+    }
+    mavenCentral()
+}
+
+dependencies {
+    api project(':java-common')
+    compileOnly "org.spigotmc:spigot-api:${bukkit_api_version}"
+    compileOnly "org.slf4j:slf4j-api:2.0.7"
+}

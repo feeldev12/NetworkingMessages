@@ -1,0 +1,15 @@
+plugins {
+    id 'multiloader-common'
+}
+
+repositories {
+    maven {
+        name = 'papermc'
+        url = 'https://repo.papermc.io/repository/maven-public/'
+    }
+}
+
+dependencies {
+    api project(':java-common')
+    compileOnly "io.papermc.paper:paper-api:${paper_api_version}"
+}

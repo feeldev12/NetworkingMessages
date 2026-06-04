@@ -1,27 +1,6 @@
-group = 'me.feeldev'
-version = '1.0-SNAPSHOT'
-
-subprojects {
-    apply(plugin: 'java-library')
-    apply(plugin: 'maven-publish')
-
-    java {
-        toolchain.languageVersion = JavaLanguageVersion.of(21)
-    }
-
-    tasks.withType(JavaCompile) {
-        options.encoding = 'UTF-8'
-        options.release = 21
-    }
-
-    publishing {
-        publications {
-            register("maven", MavenPublication) {
-                groupId = project.group
-                artifactId = project.name
-                version = project.version
-                from components.java
-            }
-        }
-    }
+plugins {
+    // see https://fabricmc.net/develop/ for new versions
+    id 'fabric-loom' version '1.7-SNAPSHOT' apply false
+    // see https://projects.neoforged.net/neoforged/moddevgradle for new versions
+    id 'net.neoforged.moddev' version '0.1.110' apply false
 }

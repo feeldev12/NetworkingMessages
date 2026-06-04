@@ -1,0 +1,135 @@
+package me.feeldev.networkingmessages.networking.managers;
+
+import me.feeldev.networkingmessages.networking.CommonAPI;
+import me.feeldev.networkingmessages.networking.exceptions.RegistryMessageException;
+import me.feeldev.networkingmessages.networking.models.AbstractMessage;
+import me.feeldev.networkingmessages.networking.models.IMessagesManager;
+import me.feeldev.networkingmessages.networking.models.MessageType;
+import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.network.ChannelBuilder;
+import net.minecraftforge.network.SimpleChannel;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
+    private final Map<MessageType, AbstractMessage<?>> messages = new HashMap<>();
+    private final Map<Class<?>, MessageType> classTypes = new HashMap<>();
+    private static final Map<Class<?>, AbstractMessage<?>> classInstances = new HashMap<>();
+
+    private static MessagesManager instance;
+
+    private MinecraftServer server;
+    private final SimpleChannel channel;
+
+    public MessagesManager(MinecraftServer server, String namespace) {
+        this.server = server;
+        this.channel = ChannelBuilder
+            .named(ResourceLocation.fromNamespaceAndPath(namespace, "main"))
+            .networkProtocolVersion(1)
+            .clientAcceptedVersions((status, i) -> true)
+            .serverAcceptedVersions((status, i) -> true)
+            .simpleChannel();
+        instance = this;
+    }
+
+    public static MessagesManager getInstance() {
+        return instance;
+    }
+
+    public void setServer(MinecraftServer server) {
+        this.server = server;
+    }
+
+    public static Map<Class<?>, AbstractMessage<?>> getClassInstances() {
+        return classInstances;
+    }
+
+    public SimpleChannel getChannel() {
+        return channel;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public void registerMessage(MessageType messageType, @NotNull AbstractMessage message) {
+        if (classTypes.containsKey(message.getClass())) {
+            throw new RegistryMessageException("Message " + messageType.getChannelIdWithNamespace() + " already registered");
+        }
+        messages.put(messageType, message);
+        classTypes.put(message.getClass(), messageType);
+        classInstances.put(message.getClass(), message);
+        registerWithChannel(messageType, message);
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T extends AbstractMessage<T>> void registerWithChannel(MessageType messageType, T prototype) {
+        channel.messageBuilder((Class<T>) prototype.getClass())
+            .encoder((msg, buf) -> prototype.encode(buf, msg))
+            .decoder(buf -> prototype.decode(buf))
+            .consumerMainThread((msg, ctx) -> {
+                if (messageType.isServerListener()) {
+                    msg.handleOnServer(ctx.getSender());
+                } else {
+                    msg.handleOnClient();
+                }
+            })
+            .add();
+        CommonAPI.LOGGER.info("[NetworkingMessages] Registered message: {}", messageType.getChannelIdWithNamespace());
+    }
+
+    @Override
+    public void unregister() {
+        messages.clear();
+        classTypes.clear();
+        classInstances.clear();
+    }
+
+    public void sendMessageToClient(AbstractMessage<?> message) {
+        sendMessageToClient(null, message);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public void sendMessageToClient(ServerPlayer player, AbstractMessage<?> message) {
+        if (!classTypes.containsKey(message.getClass())) {
+            throw new RegistryMessageException("Message " + message.getMessageType().getChannelIdWithNamespace() + " not registered");
+        }
+        MessageType messageType = getMessageTypeByClass(message);
+        AbstractMessage abstractMessage = messages.get(messageType);
+        message.updateProperties(messageType, abstractMessage.type());
+
+        if (player == null) {
+            server.getPlayerList().getPlayers()
+                .forEach(p -> p.connection.send(new ClientboundCustomPayloadPacket(message)));
+            return;
+        }
+        player.connection.send(new ClientboundCustomPayloadPacket(message));
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public void sendMessageTrackerToClient(ServerPlayer player, AbstractMessage<?> message) {
+        MessageType messageType = getMessageTypeByClass(message);
+        if (messageType == null) {
+            throw new RegistryMessageException("Message " + message.getMessageType().getChannelIdWithNamespace() + " not registered");
+        }
+        AbstractMessage abstractMessage = messages.get(messageType);
+        message.updateProperties(messageType, abstractMessage.type());
+
+        if (player == null) {
+            server.getPlayerList().getPlayers()
+                .forEach(p -> p.connection.send(new ClientboundCustomPayloadPacket(message)));
+            return;
+        }
+        player.serverLevel().getChunkSource().chunkMap
+            .getPlayers(player.chunkPosition(), false)
+            .forEach(p -> p.connection.send(new ClientboundCustomPayloadPacket(message)));
+    }
+
+    @Override
+    public MessageType getMessageTypeByClass(AbstractMessage<?> message) {
+        return classTypes.get(message.getClass());
+    }
+}

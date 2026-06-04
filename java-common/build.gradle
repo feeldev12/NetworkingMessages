@@ -1,0 +1,31 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(java_version)
+    withSourcesJar()
+    withJavadocJar()
+}
+
+base {
+    archivesName = "${mod_id}-java-common"
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compileOnly "org.slf4j:slf4j-api:2.0.7"
+    compileOnly "io.netty:netty-all:4.1.68.Final"
+}
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            from components.java
+        }
+    }
+}

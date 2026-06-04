@@ -1,0 +1,7 @@
+name: ${mod_name}
+version: '${version}'
+main: me.feeldev.networkingmessages.ExamplePlugin
+api-version: '1.21'
+description: ${description}
+authors:
+  - ${mod_author}
