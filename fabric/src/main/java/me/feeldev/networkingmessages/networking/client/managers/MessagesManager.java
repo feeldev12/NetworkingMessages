@@ -7,6 +7,7 @@ import me.feeldev.networkingmessages.networking.models.IMessagesManager;
 import me.feeldev.networkingmessages.networking.models.MessageType;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.fabricmc.fabric.api.client.networking.v1.ClientConfigurationNetworking;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -37,16 +38,30 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
         classTypes.put(message.getClass(), message);
 
         CustomPacketPayload.Type<? extends AbstractMessage<?>> id = message.type();
-        PayloadTypeRegistry.playC2S().register(id, message);
-        PayloadTypeRegistry.playS2C().register(id, message);
-        ClientPlayNetworking.registerGlobalReceiver(id, (payload, context) -> {
-            try {
-                payload.handleOnClient();
-            } catch (Exception e) {
-                CommonAPI.LOGGER.error("[NetworkingMessages] Exception in handler for message: {}", messageType.getChannelIdWithNamespace(), e);
-                throw e;
-            }
-        });
+
+        if (messageType.isConfigurationPhase()) {
+            PayloadTypeRegistry.configurationC2S().register(id, message);
+            PayloadTypeRegistry.configurationS2C().register(id, message);
+            ClientConfigurationNetworking.registerGlobalReceiver(id, (payload, context) -> {
+                try {
+                    payload.handleOnClient();
+                } catch (Exception e) {
+                    CommonAPI.LOGGER.error("[NetworkingMessages] Exception in handler for message: {}", messageType.getChannelIdWithNamespace(), e);
+                    throw e;
+                }
+            });
+        } else {
+            PayloadTypeRegistry.playC2S().register(id, message);
+            PayloadTypeRegistry.playS2C().register(id, message);
+            ClientPlayNetworking.registerGlobalReceiver(id, (payload, context) -> {
+                try {
+                    payload.handleOnClient();
+                } catch (Exception e) {
+                    CommonAPI.LOGGER.error("[NetworkingMessages] Exception in handler for message: {}", messageType.getChannelIdWithNamespace(), e);
+                    throw e;
+                }
+            });
+        }
 
         CommonAPI.LOGGER.info("Registered message: {}", messageType.getChannelIdWithNamespace());
     }
@@ -62,7 +77,11 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
         if (!abstractMessage.getMessageType().isServerListener()) {
             throw new RegistryMessageException("Message " + abstractMessage.getMessageType().getChannelIdWithNamespace() + " is not a server listener");
         }
-        ClientPlayNetworking.send(abstractMessage);
+        if (abstractMessage.getMessageType().isConfigurationPhase()) {
+            ClientConfigurationNetworking.send(abstractMessage);
+        } else {
+            ClientPlayNetworking.send(abstractMessage);
+        }
     }
 
     public static Map<Class<?>, AbstractMessage<?>> getClassTypes() {

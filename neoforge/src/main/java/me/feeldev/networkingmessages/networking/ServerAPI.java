@@ -4,8 +4,14 @@ import me.feeldev.networkingmessages.networking.managers.MessagesManager;
 import me.feeldev.networkingmessages.networking.managers.TypesManager;
 import me.feeldev.networkingmessages.networking.models.AbstractMessage;
 import me.feeldev.networkingmessages.networking.models.NetworkAPI;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.network.ConfigurationTask;
+import net.neoforged.neoforge.network.configuration.ICustomConfigurationTask;
+import net.neoforged.neoforge.network.event.RegisterConfigurationTasksEvent;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+
+import java.util.function.Consumer;
 
 public class ServerAPI implements NetworkAPI<AbstractMessage<?>> {
     private final TypesManager typesManager;
@@ -31,12 +37,32 @@ public class ServerAPI implements NetworkAPI<AbstractMessage<?>> {
         CommonAPI.setNetworkAPI(this);
     }
 
-    /**
-     * NeoForge only — call this from your {@code @SubscribeEvent} on {@link RegisterPayloadHandlersEvent}.
-     * Not needed in Fabric or Forge.
-     */
     public void onRegisterPayloads(RegisterPayloadHandlersEvent event) {
-        messagesManager.flush(event.registrar(messagesManager.getNamespace()));
+        var registrar = event.registrar(messagesManager.getNamespace());
+        messagesManager.flush(registrar);
+        messagesManager.flushConfig(registrar);
+    }
+
+    public void onRegisterConfigTasks(RegisterConfigurationTasksEvent event) {
+        typesManager.getMessageTypes().values().stream()
+            .filter(mt -> mt.isConfigurationPhase() && !mt.isServerListener())
+            .forEach(mt -> {
+                AbstractMessage<?> message = messagesManager.getMessages().get(mt);
+                if (message != null) {
+                    ConfigurationTask.Type taskType = new ConfigurationTask.Type(mt.getChannelIdWithNamespace());
+                    event.register(new ICustomConfigurationTask() {
+                        @Override
+                        public void run(Consumer<CustomPacketPayload> sender) {
+                            sender.accept(message);
+                        }
+
+                        @Override
+                        public ConfigurationTask.Type type() {
+                            return taskType;
+                        }
+                    });
+                }
+            });
     }
 
     public void setServer(MinecraftServer server) {

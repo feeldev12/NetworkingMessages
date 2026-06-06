@@ -5,8 +5,10 @@ import me.feeldev.networkingmessages.networking.exceptions.RegistryMessageExcept
 import me.feeldev.networkingmessages.networking.models.AbstractMessage;
 import me.feeldev.networkingmessages.networking.models.IMessagesManager;
 import me.feeldev.networkingmessages.networking.models.MessageType;
+import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerConfigurationPacketListenerImpl;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.DirectionalPayloadHandler;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
@@ -53,9 +55,20 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
 
     @SuppressWarnings("unchecked")
     public void flush(PayloadRegistrar registrar) {
-        messages.forEach((messageType, message) ->
-            registerPayload(registrar, messageType, (AbstractMessage) message)
-        );
+        messages.forEach((messageType, message) -> {
+            if (!messageType.isConfigurationPhase()) {
+                registerPayload(registrar, messageType, (AbstractMessage) message);
+            }
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    public void flushConfig(PayloadRegistrar registrar) {
+        messages.forEach((messageType, message) -> {
+            if (messageType.isConfigurationPhase()) {
+                registerConfigPayload(registrar, messageType, (AbstractMessage) message);
+            }
+        });
     }
 
     private <T extends AbstractMessage<T>> void registerPayload(PayloadRegistrar registrar, MessageType messageType, T message) {
@@ -84,11 +97,59 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
         CommonAPI.LOGGER.info("[NetworkingMessages] Registered message: {}", messageType.getChannelIdWithNamespace());
     }
 
+    private <T extends AbstractMessage<T>> void registerConfigPayload(PayloadRegistrar registrar, MessageType messageType, T message) {
+        registrar.configurationToClient(
+            message.type(),
+            message,
+            (payload, context) -> {
+                try {
+                    payload.handleOnClient();
+                } catch (Exception e) {
+                    CommonAPI.LOGGER.error("[NetworkingMessages] Client handler exception for {}: {}", messageType.getChannelIdWithNamespace(), e.getMessage());
+                    throw e;
+                }
+            }
+        );
+        if (messageType.isServerListener()) {
+            registrar.configurationToServer(
+                message.type(),
+                message,
+                (payload, context) -> {
+                    try {
+                        ServerConfigurationPacketListenerImpl handler =
+                            (ServerConfigurationPacketListenerImpl) context.listener();
+                        payload.handleOnConfigurationServer(handler);
+                    } catch (Exception e) {
+                        CommonAPI.LOGGER.error("[NetworkingMessages] Server handler exception for {}: {}", messageType.getChannelIdWithNamespace(), e.getMessage());
+                        throw e;
+                    }
+                }
+            );
+        }
+        CommonAPI.LOGGER.info("[NetworkingMessages] Registered configuration message: {}", messageType.getChannelIdWithNamespace());
+    }
+
     @Override
     public void unregister() {
         messages.clear();
         classTypes.clear();
         classInstances.clear();
+    }
+
+    public Map<MessageType, AbstractMessage<?>> getMessages() {
+        return messages;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public void sendConfigurationMessageToClient(ServerConfigurationPacketListenerImpl handler, AbstractMessage<?> message) {
+        if (!classTypes.containsKey(message.getClass())) {
+            throw new RegistryMessageException("Message " + message.getMessageType().getChannelIdWithNamespace() + " not registered");
+        }
+        MessageType messageType = getMessageTypeByClass(message);
+        AbstractMessage abstractMessage = messages.get(messageType);
+        message.updateProperties(messageType, abstractMessage.type());
+
+        handler.send(new ClientboundCustomPayloadPacket(message));
     }
 
     public void sendMessageToClient(AbstractMessage<?> message) {

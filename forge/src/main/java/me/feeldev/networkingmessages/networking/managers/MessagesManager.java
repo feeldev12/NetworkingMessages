@@ -9,7 +9,9 @@ import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerConfigurationPacketListenerImpl;
 import net.minecraftforge.network.ChannelBuilder;
+import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.SimpleChannel;
 import org.jetbrains.annotations.NotNull;
 
@@ -67,17 +69,29 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
 
     @SuppressWarnings("unchecked")
     private <T extends AbstractMessage<T>> void registerWithChannel(MessageType messageType, T prototype) {
-        channel.messageBuilder((Class<T>) prototype.getClass())
-            .encoder((msg, buf) -> prototype.encode(buf, msg))
-            .decoder(buf -> prototype.decode(buf))
-            .consumerMainThread((msg, ctx) -> {
-                if (messageType.isServerListener()) {
-                    msg.handleOnServer(ctx.getSender());
-                } else {
-                    msg.handleOnClient();
-                }
-            })
-            .add();
+        if (messageType.isConfigurationPhase() && messageType.isServerListener()) {
+            channel.messageBuilder((Class<T>) prototype.getClass(), NetworkDirection.CONFIGURATION_TO_SERVER)
+                .encoder((msg, buf) -> prototype.encode(buf, msg))
+                .decoder(buf -> prototype.decode(buf))
+                .consumerMainThread((msg, ctx) -> {
+                    ServerConfigurationPacketListenerImpl handler =
+                        (ServerConfigurationPacketListenerImpl) ctx.getConnection().getPacketListener();
+                    msg.handleOnConfigurationServer(handler);
+                })
+                .add();
+        } else {
+            channel.messageBuilder((Class<T>) prototype.getClass())
+                .encoder((msg, buf) -> prototype.encode(buf, msg))
+                .decoder(buf -> prototype.decode(buf))
+                .consumerMainThread((msg, ctx) -> {
+                    if (messageType.isServerListener()) {
+                        msg.handleOnServer(ctx.getSender());
+                    } else {
+                        msg.handleOnClient();
+                    }
+                })
+                .add();
+        }
         CommonAPI.LOGGER.info("[NetworkingMessages] Registered message: {}", messageType.getChannelIdWithNamespace());
     }
 
@@ -86,6 +100,22 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
         messages.clear();
         classTypes.clear();
         classInstances.clear();
+    }
+
+    public Map<MessageType, AbstractMessage<?>> getMessages() {
+        return messages;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public void sendConfigurationMessageToClient(ServerConfigurationPacketListenerImpl handler, AbstractMessage<?> message) {
+        if (!classTypes.containsKey(message.getClass())) {
+            throw new RegistryMessageException("Message " + message.getMessageType().getChannelIdWithNamespace() + " not registered");
+        }
+        MessageType messageType = getMessageTypeByClass(message);
+        AbstractMessage abstractMessage = messages.get(messageType);
+        message.updateProperties(messageType, abstractMessage.type());
+
+        handler.send(new ClientboundCustomPayloadPacket(message));
     }
 
     public void sendMessageToClient(AbstractMessage<?> message) {

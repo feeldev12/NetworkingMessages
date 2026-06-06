@@ -4,6 +4,7 @@ public class MessageType {
     private final String channelId;
     private final int packetId;
     private final boolean serverListener;
+    private final boolean configurationPhase;
     private String namespace;
 
     public MessageType(String channelId, int packetId) {
@@ -11,9 +12,14 @@ public class MessageType {
     }
 
     public MessageType(String channelId, int packetId, boolean serverListener) {
+        this(channelId, packetId, serverListener, false);
+    }
+
+    public MessageType(String channelId, int packetId, boolean serverListener, boolean configurationPhase) {
         this.channelId = channelId;
         this.packetId = packetId;
         this.serverListener = serverListener;
+        this.configurationPhase = configurationPhase;
     }
 
     public int getPacketId() {
@@ -39,5 +45,9 @@ public class MessageType {
 
     public boolean isServerListener() {
         return serverListener;
+    }
+
+    public boolean isConfigurationPhase() {
+        return configurationPhase;
     }
 }

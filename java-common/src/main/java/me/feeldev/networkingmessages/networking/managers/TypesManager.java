@@ -31,6 +31,17 @@ public class TypesManager {
         return registerMessageType(channelId, false);
     }
 
+    public MessageType registerConfigurationMessageType(String channelId, boolean serverListener) {
+        int packetId = messageTypes.size();
+        if (messageTypes.containsKey(channelId)) {
+            throw new RegistryMessageTypeException("That channelId already exist");
+        }
+        MessageType messageType = new MessageType(channelId, packetId, serverListener, true);
+        messageType.setNamespace(namespace);
+        messageTypes.put(channelId, messageType);
+        return messageType;
+    }
+
     public void unregisterMessageType(String channelId) {
         messageTypes.remove(channelId);
     }

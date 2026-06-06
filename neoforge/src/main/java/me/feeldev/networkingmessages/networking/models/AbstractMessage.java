@@ -4,6 +4,7 @@ import me.feeldev.networkingmessages.networking.interfaces.IModMessage;
 import me.feeldev.networkingmessages.networking.managers.MessagesManager;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.network.ServerConfigurationPacketListenerImpl;
 
 public abstract class AbstractMessage<T extends AbstractMessage<T>> implements IModMessage<T> {
     protected MessageType messageType;
@@ -39,4 +40,6 @@ public abstract class AbstractMessage<T extends AbstractMessage<T>> implements I
         this.messageType = messageType;
         this.id = id;
     }
+
+    public void handleOnConfigurationServer(ServerConfigurationPacketListenerImpl handler) {}
 }

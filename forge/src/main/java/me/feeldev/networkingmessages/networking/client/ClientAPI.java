@@ -21,11 +21,14 @@ public class ClientAPI implements NetworkAPI<AbstractMessage<?>> {
         CommonAPI.setNetworkAPI(this);
     }
 
-    /**
-     * Sends a message from client to server (C2S).
-     * The message type must have been registered with serverListener=true.
-     */
     public void sendMessageToServer(AbstractMessage<?> message) {
+        var connection = Minecraft.getInstance().getConnection();
+        if (connection != null) {
+            connection.send(new ServerboundCustomPayloadPacket(message));
+        }
+    }
+
+    public void sendConfigurationMessageToServer(AbstractMessage<?> message) {
         var connection = Minecraft.getInstance().getConnection();
         if (connection != null) {
             connection.send(new ServerboundCustomPayloadPacket(message));

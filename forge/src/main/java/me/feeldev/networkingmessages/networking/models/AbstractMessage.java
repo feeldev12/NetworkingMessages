@@ -5,6 +5,7 @@ import me.feeldev.networkingmessages.networking.managers.MessagesManager;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerConfigurationPacketListenerImpl;
 
 public abstract class AbstractMessage<T extends AbstractMessage<T>> implements IModMessage<T> {
     protected MessageType messageType;
@@ -41,9 +42,9 @@ public abstract class AbstractMessage<T extends AbstractMessage<T>> implements I
         this.id = id;
     }
 
-    /** Override to handle this message when received on the server (C2S). */
     public void handleOnServer(ServerPlayer sender) {}
 
-    /** Override to handle this message when received on the client (S2C). */
     public void handleOnClient() {}
+
+    public void handleOnConfigurationServer(ServerConfigurationPacketListenerImpl handler) {}
 }
