@@ -10,7 +10,7 @@ java {
 }
 
 base {
-    archivesName = "${mod_id}-java-common"
+    archivesName = "java-common"
 }
 
 repositories {
