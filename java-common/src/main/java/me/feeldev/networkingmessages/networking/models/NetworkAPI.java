@@ -12,4 +12,6 @@ public interface NetworkAPI<T> {
     boolean isClient();
 
     boolean isCompressionEnabled();
+
+    void setCompressionEnabled(boolean enabled);
 }

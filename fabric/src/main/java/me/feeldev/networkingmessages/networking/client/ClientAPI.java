@@ -21,7 +21,7 @@ public class ClientAPI implements NetworkAPI<AbstractMessage<?>> {
         CommonAPI.setNetworkAPI(this);
     }
 
-    public void sendMessageToServer(me.feeldev.networkingmessages.networking.client.models.AbstractMessage<?> message) {
+    public void sendMessageToServer(AbstractMessage<?> message) {
         messagesManager.sendMessageToServer(message);
     }
 
