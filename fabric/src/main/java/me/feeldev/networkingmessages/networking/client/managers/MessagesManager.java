@@ -1,8 +1,8 @@
 package me.feeldev.networkingmessages.networking.client.managers;
 
-import me.feeldev.networkingmessages.networking.client.models.AbstractMessage;
 import me.feeldev.networkingmessages.networking.CommonAPI;
 import me.feeldev.networkingmessages.networking.exceptions.RegistryMessageException;
+import me.feeldev.networkingmessages.networking.models.AbstractMessage;
 import me.feeldev.networkingmessages.networking.models.IMessagesManager;
 import me.feeldev.networkingmessages.networking.models.MessageType;
 import net.fabricmc.api.EnvType;
@@ -11,13 +11,14 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientConfigurationNetworkin
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @Environment(EnvType.CLIENT)
-public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
+public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractMessage<?>> {
     private final Map<MessageType, AbstractMessage<?>> messages;
     private static final Map<Class<?>, AbstractMessage<?>> classTypes = new HashMap<>();
 
@@ -36,6 +37,7 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
 
         messages.put(messageType, message);
         classTypes.put(message.getClass(), message);
+        AbstractMessage.getClassInstances().put(message.getClass(), message);
 
         CustomPacketPayload.Type<? extends AbstractMessage<?>> id = message.type();
 

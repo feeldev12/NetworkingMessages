@@ -1,12 +1,20 @@
 package me.feeldev.networkingmessages.networking.models;
 
 import me.feeldev.networkingmessages.networking.interfaces.IModMessage;
-import me.feeldev.networkingmessages.networking.managers.MessagesManager;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.network.ServerConfigurationPacketListenerImpl;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public abstract class AbstractMessage<T extends AbstractMessage<T>> implements IModMessage<T> {
+
+    private static final Map<Class<?>, AbstractMessage<?>> classInstances = new HashMap<>();
+
+    public static Map<Class<?>, AbstractMessage<?>> getClassInstances() {
+        return classInstances;
+    }
+
     protected MessageType messageType;
     private CustomPacketPayload.Type<T> id;
 
@@ -19,7 +27,7 @@ public abstract class AbstractMessage<T extends AbstractMessage<T>> implements I
 
     @SuppressWarnings("unchecked")
     public AbstractMessage() {
-        AbstractMessage<?> registered = MessagesManager.getClassInstances().get(this.getClass());
+        AbstractMessage<?> registered = classInstances.get(this.getClass());
         if (registered != null) {
             this.messageType = registered.messageType;
             this.id = (CustomPacketPayload.Type<T>) registered.id;
@@ -40,6 +48,4 @@ public abstract class AbstractMessage<T extends AbstractMessage<T>> implements I
         this.messageType = messageType;
         this.id = id;
     }
-
-    public void handleOnConfigurationServer(ServerConfigurationPacketListenerImpl handler) {}
 }

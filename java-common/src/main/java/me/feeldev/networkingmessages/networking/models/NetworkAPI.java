@@ -2,10 +2,10 @@ package me.feeldev.networkingmessages.networking.models;
 
 import me.feeldev.networkingmessages.networking.managers.TypesManager;
 
-public interface NetworkAPI<T> {
+public interface NetworkAPI<P, T> {
     TypesManager getTypesManager();
 
-    IMessagesManager<T> getMessagesManager();
+    IMessagesManager<P, T> getMessagesManager();
 
     boolean isServer();
 
@@ -14,4 +14,6 @@ public interface NetworkAPI<T> {
     boolean isCompressionEnabled();
 
     void setCompressionEnabled(boolean enabled);
+
+    void sendMessageToServer(T message);
 }

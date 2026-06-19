@@ -14,7 +14,7 @@ import org.bukkit.plugin.messaging.PluginMessageListener;
 import java.util.HashMap;
 import java.util.Map;
 
-public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
+public class MessagesManager implements IMessagesManager<Player, AbstractMessage<?>> {
     private final Map<MessageType, AbstractMessage> messages;
     private final Map<Class<?>, MessageType> classTypes;
 

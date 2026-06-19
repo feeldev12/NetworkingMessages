@@ -1,15 +1,16 @@
 package me.feeldev.networkingmessages.networking.client;
 
-import me.feeldev.networkingmessages.networking.client.models.AbstractMessage;
 import me.feeldev.networkingmessages.networking.CommonAPI;
 import me.feeldev.networkingmessages.networking.client.managers.MessagesManager;
 import me.feeldev.networkingmessages.networking.managers.TypesManager;
+import me.feeldev.networkingmessages.networking.models.AbstractMessage;
 import me.feeldev.networkingmessages.networking.models.NetworkAPI;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.minecraft.server.level.ServerPlayer;
 
 @Environment(EnvType.CLIENT)
-public class ClientAPI implements NetworkAPI<AbstractMessage<?>> {
+public class ClientAPI implements NetworkAPI<ServerPlayer, AbstractMessage<?>> {
     private final TypesManager typesManager;
     private final MessagesManager messagesManager;
     private boolean compressionEnabled;

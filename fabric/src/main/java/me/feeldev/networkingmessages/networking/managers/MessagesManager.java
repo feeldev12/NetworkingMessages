@@ -18,11 +18,9 @@ import org.jetbrains.annotations.NotNull;
 import java.util.HashMap;
 import java.util.Map;
 
-public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
+public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractMessage<?>> {
     private final Map<MessageType, AbstractMessage> messages;
     private final Map<Class<?>, MessageType> classTypes;
-    private static final Map<Class<?>, AbstractMessage<?>> classInstances = new HashMap<>();
-
     private final String namespace;
     private final MinecraftServer server;
 
@@ -33,10 +31,6 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
         this.classTypes = new HashMap<>();
     }
 
-    public static Map<Class<?>, AbstractMessage<?>> getClassInstances() {
-        return classInstances;
-    }
-
     @SuppressWarnings("unchecked")
     public void registerMessage(MessageType messageType, @NotNull AbstractMessage message) {
         if (classTypes.containsKey(message.getClass())) {
@@ -45,7 +39,7 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
 
         messages.put(messageType, message);
         classTypes.put(message.getClass(), messageType);
-        classInstances.put(message.getClass(), message);
+        AbstractMessage.getClassInstances().put(message.getClass(), message);
 
         CustomPacketPayload.Type<? extends AbstractMessage<?>> id = message.type();
 
@@ -91,7 +85,7 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
         });
         messages.clear();
         classTypes.clear();
-        classInstances.clear();
+        AbstractMessage.getClassInstances().clear();
     }
 
     @SuppressWarnings("unchecked")

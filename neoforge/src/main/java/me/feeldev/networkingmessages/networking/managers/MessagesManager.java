@@ -17,11 +17,9 @@ import org.jetbrains.annotations.NotNull;
 import java.util.HashMap;
 import java.util.Map;
 
-public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
+public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractMessage<?>> {
     private final Map<MessageType, AbstractMessage<?>> messages = new HashMap<>();
     private final Map<Class<?>, MessageType> classTypes = new HashMap<>();
-    private static final Map<Class<?>, AbstractMessage<?>> classInstances = new HashMap<>();
-
     private MinecraftServer server;
     private final String namespace;
 
@@ -32,10 +30,6 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
 
     public void setServer(MinecraftServer server) {
         this.server = server;
-    }
-
-    public static Map<Class<?>, AbstractMessage<?>> getClassInstances() {
-        return classInstances;
     }
 
     public String getNamespace() {
@@ -50,7 +44,7 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
         }
         messages.put(messageType, message);
         classTypes.put(message.getClass(), messageType);
-        classInstances.put(message.getClass(), message);
+        AbstractMessage.getClassInstances().put(message.getClass(), message);
     }
 
     @SuppressWarnings("unchecked")
@@ -133,7 +127,7 @@ public class MessagesManager implements IMessagesManager<AbstractMessage<?>> {
     public void unregister() {
         messages.clear();
         classTypes.clear();
-        classInstances.clear();
+        AbstractMessage.getClassInstances().clear();
     }
 
     public Map<MessageType, AbstractMessage<?>> getMessages() {
