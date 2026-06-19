@@ -45,6 +45,13 @@ minecraft {
 
 sourceSets.main.resources.srcDir 'src/generated/resources'
 
+// java-common sources are compiled into this JAR via commonJava, but java-common is also
+// a separate transitive dep. JPMS rejects the split package — exclude from JAR output so
+// only java-common-*.jar owns the exceptions package at runtime.
+jar {
+    exclude 'me/feeldev/networkingmessages/networking/exceptions/**'
+}
+
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
 
