@@ -36,7 +36,7 @@ public class FriendlyByteBuf extends ByteBuf {
     }
 
     public void detectCompression() {
-        NetworkAPI<?> api = CommonAPI.getNetworkAPI();
+        NetworkAPI<?, ?> api = CommonAPI.getNetworkAPI();
         if(api == null) {
             CommonAPI.LOGGER.warn("Could not detect network api");
             return;

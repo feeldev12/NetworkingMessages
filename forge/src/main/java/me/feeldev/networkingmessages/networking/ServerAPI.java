@@ -6,12 +6,13 @@ import me.feeldev.networkingmessages.networking.models.AbstractMessage;
 import me.feeldev.networkingmessages.networking.models.NetworkAPI;
 import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ConfigurationTask;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.network.GatherLoginConfigurationTasksEvent;
 import net.minecraftforge.network.config.SimpleConfigurationTask;
 
-public class ServerAPI implements NetworkAPI<AbstractMessage<?>> {
+public class ServerAPI implements NetworkAPI<ServerPlayer, AbstractMessage<?>> {
     private final TypesManager typesManager;
     private final MessagesManager messagesManager;
     private boolean compressionEnabled;

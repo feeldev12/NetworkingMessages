@@ -9,11 +9,12 @@ import net.fabricmc.fabric.api.networking.v1.ServerConfigurationConnectionEvents
 import net.fabricmc.fabric.api.networking.v1.ServerConfigurationNetworking;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ConfigurationTask;
 
 import java.util.function.Consumer;
 
-public class ServerAPI implements NetworkAPI<AbstractMessage<?>> {
+public class ServerAPI implements NetworkAPI<ServerPlayer, AbstractMessage<?>> {
     private final TypesManager typesManager;
     private final MessagesManager messagesManager;
     private boolean compressionEnabled;

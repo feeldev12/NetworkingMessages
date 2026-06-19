@@ -8,13 +8,13 @@ import org.slf4j.LoggerFactory;
 public class CommonAPI {
     private static final String MOD_ID = "networking_messages";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
-    private static NetworkAPI<?> networkAPI;
+    private static NetworkAPI<?, ?> networkAPI;
 
-    public static void setNetworkAPI(NetworkAPI<?> networkAPI) {
+    public static void setNetworkAPI(NetworkAPI<?, ?> networkAPI) {
         CommonAPI.networkAPI = networkAPI;
     }
 
-    public static NetworkAPI<?> getNetworkAPI() {
+    public static NetworkAPI<?, ?> getNetworkAPI() {
         return networkAPI;
     }
 

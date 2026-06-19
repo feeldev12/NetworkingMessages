@@ -15,5 +15,7 @@ public interface NetworkAPI<P, T> {
 
     void setCompressionEnabled(boolean enabled);
 
-    void sendMessageToServer(T message);
+    default void sendMessageToServer(T message) {
+        throw new UnsupportedOperationException("Unsupported operation");
+    }
 }
