@@ -1,10 +1,10 @@
 package me.feeldev.networkingmessages.networking.managers;
 
 import me.feeldev.networkingmessages.networking.models.AbstractMessage;
-import me.feeldev.networkingmessages.networking.CommonAPI;
+import me.feeldev.networkingmessages.networking.common.CommonAPI;
 import me.feeldev.networkingmessages.networking.exceptions.RegistryMessageException;
-import me.feeldev.networkingmessages.networking.models.IMessagesManager;
-import me.feeldev.networkingmessages.networking.models.MessageType;
+import me.feeldev.networkingmessages.networking.common.IMessagesManager;
+import me.feeldev.networkingmessages.networking.common.MessageType;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.fabricmc.fabric.api.networking.v1.ServerConfigurationNetworking;

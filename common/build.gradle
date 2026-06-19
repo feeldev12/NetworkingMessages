@@ -37,7 +37,6 @@ configurations {
 
 artifacts {
     commonJava sourceSets.main.java.sourceDirectories.singleFile
-    commonJava project(':java-common').file('src/main/java')
     commonResources sourceSets.main.resources.sourceDirectories.singleFile
 }
 

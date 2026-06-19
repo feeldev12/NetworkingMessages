@@ -1,9 +1,10 @@
 package me.feeldev.networkingmessages.networking;
 
+import me.feeldev.networkingmessages.networking.common.CommonAPI;
+import me.feeldev.networkingmessages.networking.common.NetworkAPI;
+import me.feeldev.networkingmessages.networking.common.TypesManager;
 import me.feeldev.networkingmessages.networking.managers.MessagesManager;
-import me.feeldev.networkingmessages.networking.managers.TypesManager;
 import me.feeldev.networkingmessages.networking.models.AbstractMessage;
-import me.feeldev.networkingmessages.networking.models.NetworkAPI;
 import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;

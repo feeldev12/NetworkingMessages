@@ -1,10 +1,11 @@
 package me.feeldev.networkingmessages.networking;
 
-import me.feeldev.networkingmessages.networking.models.AbstractMessage;
+import me.feeldev.networkingmessages.networking.common.CommonAPI;
+import me.feeldev.networkingmessages.networking.common.MessageType;
+import me.feeldev.networkingmessages.networking.common.NetworkAPI;
+import me.feeldev.networkingmessages.networking.common.TypesManager;
 import me.feeldev.networkingmessages.networking.managers.MessagesManager;
-import me.feeldev.networkingmessages.networking.managers.TypesManager;
-import me.feeldev.networkingmessages.networking.models.MessageType;
-import me.feeldev.networkingmessages.networking.models.NetworkAPI;
+import me.feeldev.networkingmessages.networking.models.AbstractMessage;
 import net.fabricmc.fabric.api.networking.v1.ServerConfigurationConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerConfigurationNetworking;
 import net.minecraft.network.protocol.Packet;

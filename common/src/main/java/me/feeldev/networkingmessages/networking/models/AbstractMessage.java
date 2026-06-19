@@ -1,5 +1,6 @@
 package me.feeldev.networkingmessages.networking.models;
 
+import me.feeldev.networkingmessages.networking.common.MessageType;
 import me.feeldev.networkingmessages.networking.interfaces.IModMessage;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;

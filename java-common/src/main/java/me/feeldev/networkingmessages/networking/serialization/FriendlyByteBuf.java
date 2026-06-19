@@ -6,8 +6,8 @@ import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.DecoderException;
 import io.netty.util.ByteProcessor;
 import me.feeldev.networkingmessages.networking.exceptions.CustomSerializerException;
-import me.feeldev.networkingmessages.networking.CommonAPI;
-import me.feeldev.networkingmessages.networking.models.NetworkAPI;
+import me.feeldev.networkingmessages.networking.common.CommonAPI;
+import me.feeldev.networkingmessages.networking.common.NetworkAPI;
 
 import java.io.*;
 import java.nio.ByteBuffer;

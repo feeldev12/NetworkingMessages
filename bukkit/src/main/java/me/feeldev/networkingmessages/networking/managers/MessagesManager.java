@@ -1,12 +1,12 @@
 package me.feeldev.networkingmessages.networking.managers;
 
 import me.feeldev.networkingmessages.networking.ServerAPI;
-import me.feeldev.networkingmessages.networking.CommonAPI;
+import me.feeldev.networkingmessages.networking.common.CommonAPI;
 import me.feeldev.networkingmessages.networking.exceptions.MessageNullException;
 import me.feeldev.networkingmessages.networking.exceptions.RegistryMessageException;
 import me.feeldev.networkingmessages.networking.models.AbstractMessage;
-import me.feeldev.networkingmessages.networking.models.IMessagesManager;
-import me.feeldev.networkingmessages.networking.models.MessageType;
+import me.feeldev.networkingmessages.networking.common.IMessagesManager;
+import me.feeldev.networkingmessages.networking.common.MessageType;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.messaging.PluginMessageListener;

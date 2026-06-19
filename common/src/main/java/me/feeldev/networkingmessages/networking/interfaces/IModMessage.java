@@ -2,7 +2,7 @@ package me.feeldev.networkingmessages.networking.interfaces;
 
 import io.netty.buffer.ByteBuf;
 import me.feeldev.networkingmessages.networking.models.AbstractMessage;
-import me.feeldev.networkingmessages.networking.models.MessageType;
+import me.feeldev.networkingmessages.networking.common.MessageType;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
