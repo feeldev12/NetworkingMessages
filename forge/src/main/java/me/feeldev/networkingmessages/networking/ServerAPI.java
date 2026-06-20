@@ -18,17 +18,8 @@ public class ServerAPI implements NetworkAPI<ServerPlayer, AbstractMessage<?>> {
     private final MessagesManager messagesManager;
     private boolean compressionEnabled;
 
-    /**
-     * Use this constructor during mod initialization (e.g. FMLCommonSetupEvent).
-     * The SimpleChannel is created immediately; call registerMessage() right after.
-     * Call {@link #setServer(MinecraftServer)} when the server is available.
-     */
     public ServerAPI(String namespace) {
-        this.typesManager = new TypesManager(namespace);
-        this.messagesManager = new MessagesManager(null, namespace);
-        this.compressionEnabled = false;
-        CommonAPI.setNetworkAPI(this);
-        MinecraftForge.EVENT_BUS.addListener(this::onGatherLoginConfigurationTasks);
+        this(null, namespace);
     }
 
     public ServerAPI(MinecraftServer server, String namespace) {

@@ -34,7 +34,7 @@ public class ClientAPI implements NetworkAPI<ServerPlayer, AbstractMessage<?>> {
 
     @Override
     public MessagesManager getMessagesManager() {
-        return null;
+        return MessagesManager.getInstance();
     }
 
     public void setCompressionEnabled(boolean compressionEnabled) {

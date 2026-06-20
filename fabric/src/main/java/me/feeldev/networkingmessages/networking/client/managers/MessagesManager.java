@@ -20,12 +20,13 @@ import java.util.Map;
 @Environment(EnvType.CLIENT)
 public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractMessage<?>> {
     private final Map<MessageType, AbstractMessage<?>> messages;
-    private static final Map<Class<?>, AbstractMessage<?>> classTypes = new HashMap<>();
+    private final Map<Class<?>, MessageType> classTypes;
 
     private final String namespace;
 
     public MessagesManager(String namespace) {
         this.messages = new HashMap<>();
+        this.classTypes = new HashMap<>();
         this.namespace = namespace;
     }
 
@@ -36,7 +37,7 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
         }
 
         messages.put(messageType, message);
-        classTypes.put(message.getClass(), message);
+        classTypes.put(message.getClass(), messageType);
         AbstractMessage.getClassInstances().put(message.getClass(), message);
 
         CustomPacketPayload.Type<? extends AbstractMessage<?>> id = message.type();
@@ -86,16 +87,26 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
         }
     }
 
-    public static Map<Class<?>, AbstractMessage<?>> getClassTypes() {
+    public Map<Class<?>, MessageType> getClassTypes() {
         return classTypes;
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
     public void unregister() {
+        messages.forEach((messageType, message) -> {
+            if (messageType.isConfigurationPhase()) {
+                ClientConfigurationNetworking.unregisterGlobalReceiver((CustomPacketPayload.Type) message.type());
+            } else {
+                ClientPlayNetworking.unregisterGlobalReceiver(message.type().id());
+            }
+        });
+        messages.clear();
+        classTypes.clear();
     }
 
     @Override
     public MessageType getMessageTypeByClass(AbstractMessage<?> message) {
-        return null;
+        return classTypes.get(message.getClass());
     }
 }

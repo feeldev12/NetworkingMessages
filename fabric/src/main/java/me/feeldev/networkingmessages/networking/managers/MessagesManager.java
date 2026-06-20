@@ -16,9 +16,15 @@ import net.minecraft.server.network.ServerConfigurationPacketListenerImpl;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+import net.minecraft.resources.ResourceLocation;
 
 public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractMessage<?>> {
+    private static final Set<ResourceLocation> globallyRegisteredS2C = new HashSet<>();
+    private static final Set<ResourceLocation> globallyRegisteredC2S = new HashSet<>();
+
     private final Map<MessageType, AbstractMessage> messages;
     private final Map<Class<?>, MessageType> classTypes;
     private final String namespace;
@@ -43,10 +49,15 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
 
         CustomPacketPayload.Type<? extends AbstractMessage<?>> id = message.type();
 
+        ResourceLocation payloadId = id.id();
         if (messageType.isConfigurationPhase()) {
-            PayloadTypeRegistry.configurationS2C().register(id, message);
+            if (globallyRegisteredS2C.add(payloadId)) {
+                PayloadTypeRegistry.configurationS2C().register(id, message);
+            }
             if (messageType.isServerListener()) {
-                PayloadTypeRegistry.configurationC2S().register(id, message);
+                if (globallyRegisteredC2S.add(payloadId)) {
+                    PayloadTypeRegistry.configurationC2S().register(id, message);
+                }
                 ServerConfigurationNetworking.registerGlobalReceiver(id, (payload, context) -> {
                     try {
                         server.execute(() -> payload.handleOnConfigurationServer(context.networkHandler()));
@@ -57,9 +68,13 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
                 });
             }
         } else {
-            PayloadTypeRegistry.playS2C().register(id, message);
+            if (globallyRegisteredS2C.add(payloadId)) {
+                PayloadTypeRegistry.playS2C().register(id, message);
+            }
             if (messageType.isServerListener()) {
-                PayloadTypeRegistry.playC2S().register(id, message);
+                if (globallyRegisteredC2S.add(payloadId)) {
+                    PayloadTypeRegistry.playC2S().register(id, message);
+                }
                 ServerPlayNetworking.registerGlobalReceiver(id, (payload, context) -> {
                     try {
                         payload.handleOnServer(context.player());
@@ -85,6 +100,8 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
         });
         messages.clear();
         classTypes.clear();
+        globallyRegisteredS2C.clear();
+        globallyRegisteredC2S.clear();
         AbstractMessage.getClassInstances().clear();
     }
 

@@ -151,9 +151,7 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
             getChannel().send(message, PacketDistributor.ALL.noArg());
             return;
         }
-        player.serverLevel().getChunkSource().chunkMap
-            .getPlayers(player.chunkPosition(), false)
-            .forEach(p -> getChannel().send(message, PacketDistributor.PLAYER.with(p)));
+        getChannel().send(message, PacketDistributor.TRACKING_ENTITY.with(player));
     }
 
     @Override

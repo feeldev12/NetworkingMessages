@@ -18,6 +18,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractMessage<?>> {
+    private static MessagesManager instance;
+
     private final Map<MessageType, AbstractMessage<?>> messages = new HashMap<>();
     private final Map<Class<?>, MessageType> classTypes = new HashMap<>();
     private MinecraftServer server;
@@ -26,6 +28,11 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
     public MessagesManager(MinecraftServer server, String namespace) {
         this.server = server;
         this.namespace = namespace;
+        instance = this;
+    }
+
+    public static MessagesManager getInstance() {
+        return instance;
     }
 
     public void setServer(MinecraftServer server) {
@@ -179,9 +186,7 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
             server.getPlayerList().getPlayers().forEach(p -> PacketDistributor.sendToPlayer(p, message));
             return;
         }
-        player.serverLevel().getChunkSource().chunkMap
-            .getPlayers(player.chunkPosition(), false)
-            .forEach(p -> PacketDistributor.sendToPlayer(p, message));
+        PacketDistributor.sendToPlayersTrackingEntity(player, message);
     }
 
     @Override

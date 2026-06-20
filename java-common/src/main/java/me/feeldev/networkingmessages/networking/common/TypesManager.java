@@ -15,30 +15,27 @@ public class TypesManager {
         this.messageTypes = new HashMap<>();
     }
 
-    public MessageType registerMessageType(String channelId, boolean serverListener) {
-        int packetId = messageTypes.size();
+    private MessageType doRegister(String channelId, boolean serverListener, boolean configurationPhase) {
         if (messageTypes.containsKey(channelId)) {
             throw new RegistryMessageTypeException("That channelId already exist");
         }
-        MessageType messageType = new MessageType(channelId, packetId, serverListener);
+        int packetId = messageTypes.size();
+        MessageType messageType = new MessageType(channelId, packetId, serverListener, configurationPhase);
         messageType.setNamespace(namespace);
         messageTypes.put(channelId, messageType);
         return messageType;
+    }
+
+    public MessageType registerMessageType(String channelId, boolean serverListener) {
+        return doRegister(channelId, serverListener, false);
     }
 
     public MessageType registerMessageType(String channelId) {
-        return registerMessageType(channelId, false);
+        return doRegister(channelId, false, false);
     }
 
     public MessageType registerConfigurationMessageType(String channelId, boolean serverListener) {
-        int packetId = messageTypes.size();
-        if (messageTypes.containsKey(channelId)) {
-            throw new RegistryMessageTypeException("That channelId already exist");
-        }
-        MessageType messageType = new MessageType(channelId, packetId, serverListener, true);
-        messageType.setNamespace(namespace);
-        messageTypes.put(channelId, messageType);
-        return messageType;
+        return doRegister(channelId, serverListener, true);
     }
 
     public void unregisterMessageType(String channelId) {
