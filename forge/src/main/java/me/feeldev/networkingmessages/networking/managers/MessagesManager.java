@@ -5,15 +5,19 @@ import me.feeldev.networkingmessages.networking.exceptions.RegistryMessageExcept
 import me.feeldev.networkingmessages.networking.models.AbstractMessage;
 import me.feeldev.networkingmessages.networking.common.IMessagesManager;
 import me.feeldev.networkingmessages.networking.common.MessageType;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerConfigurationPacketListenerImpl;
+import net.minecraftforge.network.Channel;
 import net.minecraftforge.network.ChannelBuilder;
-import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.network.SimpleChannel;
+import net.minecraftforge.network.payload.PayloadFlow;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
@@ -25,16 +29,20 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
     private static MessagesManager instance;
 
     private MinecraftServer server;
-    private final SimpleChannel channel;
+    private volatile Channel<CustomPacketPayload> builtChannel;
+    private final PayloadFlow<RegistryFriendlyByteBuf, CustomPacketPayload> clientboundFlow;
+    private final PayloadFlow<RegistryFriendlyByteBuf, CustomPacketPayload> serverboundFlow;
 
     public MessagesManager(MinecraftServer server, String namespace) {
         this.server = server;
-        this.channel = ChannelBuilder
+        var conn = ChannelBuilder
             .named(ResourceLocation.fromNamespaceAndPath(namespace, "main"))
             .networkProtocolVersion(1)
             .clientAcceptedVersions((status, i) -> true)
             .serverAcceptedVersions((status, i) -> true)
-            .simpleChannel();
+            .payloadChannel();
+        this.clientboundFlow = conn.play().flow(PacketFlow.CLIENTBOUND);
+        this.serverboundFlow = clientboundFlow.flow(PacketFlow.SERVERBOUND);
         instance = this;
     }
 
@@ -46,8 +54,15 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
         this.server = server;
     }
 
-    public SimpleChannel getChannel() {
-        return channel;
+    public Channel<CustomPacketPayload> getChannel() {
+        if (builtChannel == null) {
+            synchronized (this) {
+                if (builtChannel == null) {
+                    builtChannel = clientboundFlow.build();
+                }
+            }
+        }
+        return builtChannel;
     }
 
     @SuppressWarnings("unchecked")
@@ -64,28 +79,17 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
 
     @SuppressWarnings("unchecked")
     private <T extends AbstractMessage<T>> void registerWithChannel(MessageType messageType, T prototype) {
-        if (messageType.isConfigurationPhase() && messageType.isServerListener()) {
-            channel.messageBuilder((Class<T>) prototype.getClass(), NetworkDirection.CONFIGURATION_TO_SERVER)
-                .encoder((msg, buf) -> prototype.encode(buf, msg))
-                .decoder(buf -> prototype.decode(buf))
-                .consumerMainThread((msg, ctx) -> {
-                    ServerConfigurationPacketListenerImpl handler =
-                        (ServerConfigurationPacketListenerImpl) ctx.getConnection().getPacketListener();
-                    msg.handleOnConfigurationServer(handler);
-                })
-                .add();
+        StreamCodec<RegistryFriendlyByteBuf, T> codec = StreamCodec.of(
+            (buf, msg) -> prototype.encode(buf, msg),
+            buf -> prototype.decode(buf)
+        );
+
+        if (messageType.isServerListener()) {
+            serverboundFlow.addMain(prototype.type(), codec,
+                (msg, ctx) -> msg.handleOnServer(ctx.getSender()));
         } else {
-            channel.messageBuilder((Class<T>) prototype.getClass())
-                .encoder((msg, buf) -> prototype.encode(buf, msg))
-                .decoder(buf -> prototype.decode(buf))
-                .consumerMainThread((msg, ctx) -> {
-                    if (messageType.isServerListener()) {
-                        msg.handleOnServer(ctx.getSender());
-                    } else {
-                        msg.handleOnClient();
-                    }
-                })
-                .add();
+            clientboundFlow.addMain(prototype.type(), codec,
+                (msg, ctx) -> msg.handleOnClient());
         }
         CommonAPI.LOGGER.info("[NetworkingMessages] Registered message: {}", messageType.getChannelIdWithNamespace());
     }
@@ -110,6 +114,7 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
         AbstractMessage abstractMessage = messages.get(messageType);
         message.updateProperties(messageType, abstractMessage.type());
 
+        // TODO: replace with channel-based send when configuration-phase messages are needed
         handler.send(new ClientboundCustomPayloadPacket(message));
     }
 
@@ -127,10 +132,10 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
         message.updateProperties(messageType, abstractMessage.type());
 
         if (player == null) {
-            channel.send(message, PacketDistributor.ALL.noArg());
+            getChannel().send(message, PacketDistributor.ALL.noArg());
             return;
         }
-        channel.send(message, PacketDistributor.PLAYER.with(player));
+        getChannel().send(message, PacketDistributor.PLAYER.with(player));
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -143,12 +148,12 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
         message.updateProperties(messageType, abstractMessage.type());
 
         if (player == null) {
-            channel.send(message, PacketDistributor.ALL.noArg());
+            getChannel().send(message, PacketDistributor.ALL.noArg());
             return;
         }
         player.serverLevel().getChunkSource().chunkMap
             .getPlayers(player.chunkPosition(), false)
-            .forEach(p -> channel.send(message, PacketDistributor.PLAYER.with(p)));
+            .forEach(p -> getChannel().send(message, PacketDistributor.PLAYER.with(p)));
     }
 
     @Override
