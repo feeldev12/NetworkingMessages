@@ -48,16 +48,12 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
         AbstractMessage.getClassInstances().put(message.getClass(), message);
 
         CustomPacketPayload.Type<? extends AbstractMessage<?>> id = message.type();
-
         ResourceLocation payloadId = id.id();
+
         if (messageType.isConfigurationPhase()) {
-            if (globallyRegisteredS2C.add(payloadId)) {
-                PayloadTypeRegistry.configurationS2C().register(id, message);
-            }
+            tryRegisterGlobally(globallyRegisteredS2C, payloadId, () -> PayloadTypeRegistry.configurationS2C().register(id, message));
             if (messageType.isServerListener()) {
-                if (globallyRegisteredC2S.add(payloadId)) {
-                    PayloadTypeRegistry.configurationC2S().register(id, message);
-                }
+                tryRegisterGlobally(globallyRegisteredC2S, payloadId, () -> PayloadTypeRegistry.configurationC2S().register(id, message));
                 ServerConfigurationNetworking.registerGlobalReceiver(id, (payload, context) -> {
                     try {
                         server.execute(() -> payload.handleOnConfigurationServer(context.networkHandler()));
@@ -68,13 +64,9 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
                 });
             }
         } else {
-            if (globallyRegisteredS2C.add(payloadId)) {
-                PayloadTypeRegistry.playS2C().register(id, message);
-            }
+            tryRegisterGlobally(globallyRegisteredS2C, payloadId, () -> PayloadTypeRegistry.playS2C().register(id, message));
             if (messageType.isServerListener()) {
-                if (globallyRegisteredC2S.add(payloadId)) {
-                    PayloadTypeRegistry.playC2S().register(id, message);
-                }
+                tryRegisterGlobally(globallyRegisteredC2S, payloadId, () -> PayloadTypeRegistry.playC2S().register(id, message));
                 ServerPlayNetworking.registerGlobalReceiver(id, (payload, context) -> {
                     try {
                         payload.handleOnServer(context.player());
@@ -83,6 +75,16 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
                         throw e;
                     }
                 });
+            }
+        }
+    }
+
+    private void tryRegisterGlobally(Set<ResourceLocation> guard, ResourceLocation payloadId, Runnable registration) {
+        if (guard.add(payloadId)) {
+            try {
+                registration.run();
+            } catch (IllegalArgumentException ignored) {
+                // Already registered by client-side init in integrated server
             }
         }
     }
