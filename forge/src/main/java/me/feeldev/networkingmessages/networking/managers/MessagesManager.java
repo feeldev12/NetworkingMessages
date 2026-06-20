@@ -12,6 +12,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerConfigurationPacketListenerImpl;
 import net.minecraftforge.network.ChannelBuilder;
 import net.minecraftforge.network.NetworkDirection;
+import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.SimpleChannel;
 import org.jetbrains.annotations.NotNull;
 
@@ -126,11 +127,10 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
         message.updateProperties(messageType, abstractMessage.type());
 
         if (player == null) {
-            server.getPlayerList().getPlayers()
-                .forEach(p -> p.connection.send(new ClientboundCustomPayloadPacket(message)));
+            channel.send(message, PacketDistributor.ALL.noArg());
             return;
         }
-        player.connection.send(new ClientboundCustomPayloadPacket(message));
+        channel.send(message, PacketDistributor.PLAYER.with(player));
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -143,13 +143,12 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
         message.updateProperties(messageType, abstractMessage.type());
 
         if (player == null) {
-            server.getPlayerList().getPlayers()
-                .forEach(p -> p.connection.send(new ClientboundCustomPayloadPacket(message)));
+            channel.send(message, PacketDistributor.ALL.noArg());
             return;
         }
         player.serverLevel().getChunkSource().chunkMap
             .getPlayers(player.chunkPosition(), false)
-            .forEach(p -> p.connection.send(new ClientboundCustomPayloadPacket(message)));
+            .forEach(p -> channel.send(message, PacketDistributor.PLAYER.with(p)));
     }
 
     @Override
