@@ -14,14 +14,14 @@ import net.neoforged.neoforge.network.handling.DirectionalPayloadHandler;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractMessage<?>> {
     private static MessagesManager instance;
 
-    private final Map<MessageType, AbstractMessage<?>> messages = new HashMap<>();
-    private final Map<Class<?>, MessageType> classTypes = new HashMap<>();
+    private final Map<MessageType, AbstractMessage<?>> messages = new ConcurrentHashMap<>();
+    private final Map<Class<?>, MessageType> classTypes = new ConcurrentHashMap<>();
     private MinecraftServer server;
     private final String namespace;
 
@@ -46,11 +46,10 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
     @SuppressWarnings("unchecked")
     @Override
     public void registerMessage(MessageType messageType, @NotNull AbstractMessage message) {
-        if (classTypes.containsKey(message.getClass())) {
+        if (classTypes.putIfAbsent(message.getClass(), messageType) != null) {
             throw new RegistryMessageException("Message " + messageType.getChannelIdWithNamespace() + " already registered");
         }
         messages.put(messageType, message);
-        classTypes.put(message.getClass(), messageType);
         AbstractMessage.getClassInstances().put(message.getClass(), message);
     }
 

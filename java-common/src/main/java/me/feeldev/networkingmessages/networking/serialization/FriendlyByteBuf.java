@@ -26,6 +26,12 @@ public class FriendlyByteBuf extends ByteBuf {
     private final ByteBuf buf;
     private boolean compressed;
 
+    /**
+     * Wraps {@code byteBuf}. Ownership of {@code byteBuf} is NOT taken: this class never
+     * releases it, so the caller stays responsible for releasing it exactly as if this
+     * wrapper didn't exist (matches Netty pipeline conventions, e.g. an inbound message
+     * the pipeline auto-releases after the handler returns).
+     */
     public FriendlyByteBuf(ByteBuf byteBuf) {
         buf = decompressIfGzip(byteBuf);
     }

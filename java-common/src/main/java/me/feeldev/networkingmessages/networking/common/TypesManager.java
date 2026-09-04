@@ -2,27 +2,27 @@ package me.feeldev.networkingmessages.networking.common;
 
 import me.feeldev.networkingmessages.networking.exceptions.RegistryMessageTypeException;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class TypesManager {
     private final Map<String, MessageType> messageTypes;
+    private final AtomicInteger nextPacketId = new AtomicInteger();
     private final String namespace;
 
     public TypesManager(String namespace) {
         this.namespace = namespace;
-        this.messageTypes = new HashMap<>();
+        this.messageTypes = new ConcurrentHashMap<>();
     }
 
     private MessageType doRegister(String channelId, boolean serverListener, boolean configurationPhase) {
-        if (messageTypes.containsKey(channelId)) {
+        MessageType messageType = new MessageType(channelId, nextPacketId.getAndIncrement(), serverListener, configurationPhase);
+        messageType.setNamespace(namespace);
+        if (messageTypes.putIfAbsent(channelId, messageType) != null) {
             throw new RegistryMessageTypeException("That channelId already exist");
         }
-        int packetId = messageTypes.size();
-        MessageType messageType = new MessageType(channelId, packetId, serverListener, configurationPhase);
-        messageType.setNamespace(namespace);
-        messageTypes.put(channelId, messageType);
         return messageType;
     }
 

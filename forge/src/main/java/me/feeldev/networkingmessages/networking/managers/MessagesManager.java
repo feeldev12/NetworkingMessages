@@ -20,12 +20,12 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.payload.PayloadFlow;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractMessage<?>> {
-    private final Map<MessageType, AbstractMessage<?>> messages = new HashMap<>();
-    private final Map<Class<?>, MessageType> classTypes = new HashMap<>();
+    private final Map<MessageType, AbstractMessage<?>> messages = new ConcurrentHashMap<>();
+    private final Map<Class<?>, MessageType> classTypes = new ConcurrentHashMap<>();
     private static MessagesManager instance;
 
     private MinecraftServer server;
@@ -68,11 +68,10 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
     @SuppressWarnings("unchecked")
     @Override
     public void registerMessage(MessageType messageType, @NotNull AbstractMessage message) {
-        if (classTypes.containsKey(message.getClass())) {
+        if (classTypes.putIfAbsent(message.getClass(), messageType) != null) {
             throw new RegistryMessageException("Message " + messageType.getChannelIdWithNamespace() + " already registered");
         }
         messages.put(messageType, message);
-        classTypes.put(message.getClass(), messageType);
         AbstractMessage.getClassInstances().put(message.getClass(), message);
         registerWithChannel(messageType, message);
     }

@@ -14,8 +14,8 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Environment(EnvType.CLIENT)
 public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractMessage<?>> {
@@ -25,19 +25,18 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
     private final String namespace;
 
     public MessagesManager(String namespace) {
-        this.messages = new HashMap<>();
-        this.classTypes = new HashMap<>();
+        this.messages = new ConcurrentHashMap<>();
+        this.classTypes = new ConcurrentHashMap<>();
         this.namespace = namespace;
     }
 
     @SuppressWarnings("unchecked")
     public void registerMessage(MessageType messageType, @NotNull AbstractMessage message) {
-        if (classTypes.containsKey(message.getClass())) {
+        if (classTypes.putIfAbsent(message.getClass(), messageType) != null) {
             throw new RegistryMessageException("Message " + messageType.getChannelIdWithNamespace() + " already registered");
         }
 
         messages.put(messageType, message);
-        classTypes.put(message.getClass(), messageType);
         AbstractMessage.getClassInstances().put(message.getClass(), message);
 
         CustomPacketPayload.Type<? extends AbstractMessage<?>> id = message.type();

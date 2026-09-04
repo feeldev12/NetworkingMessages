@@ -11,8 +11,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class MessagesManager implements IMessagesManager<Player, AbstractMessage<?>> {
     private final Map<MessageType, AbstractMessage> messages;
@@ -25,19 +25,18 @@ public class MessagesManager implements IMessagesManager<Player, AbstractMessage
 
     public MessagesManager(JavaPlugin plugin, ServerAPI serverAPI, String namespace) {
         this.plugin = plugin;
-        this.messages = new HashMap<>();
-        this.classTypes = new HashMap<>();
+        this.messages = new ConcurrentHashMap<>();
+        this.classTypes = new ConcurrentHashMap<>();
         this.serverAPI = serverAPI;
         this.namespace = namespace.endsWith(":") ? namespace : namespace + ":";
     }
 
     public void registerMessage(MessageType messageType, AbstractMessage<?> message) {
-        if(classTypes.containsKey(message.getClass())) {
+        if (classTypes.putIfAbsent(message.getClass(), messageType) != null) {
             throw new RegistryMessageException("Message " + messageType.getChannelIdWithNamespace() + " already registered");
         }
 
         messages.put(messageType, message);
-        classTypes.put(message.getClass(), messageType);
 
         if(messageType.isServerListener()) {
             plugin.getServer().getMessenger().registerIncomingPluginChannel(plugin, namespace + messageType.getChannelId(), (PluginMessageListener) messages.get(messageType));
