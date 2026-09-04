@@ -155,6 +155,8 @@ public class MyModForge {
 }
 ```
 
+Configuration-phase payloads don't need any extra wiring here: Forge's `ServerAPI` constructor already hooks `MinecraftForge.EVENT_BUS` itself to register those during login.
+
 ### NeoForge
 
 `ServerAPI(String, IEventBus)` registers this instance's payload/config-task handlers on your mod event bus for you:
