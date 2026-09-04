@@ -1,32 +1,179 @@
-# MultiLoader Template
+# NetworkingMessages
 
-This project provides a Gradle project template that can compile Minecraft mods for multiple modloaders using a common project for the sources. This project does not require any third party libraries or dependencies. If you have any questions or want to discuss the project, please join our [Discord](https://discord.myceliummod.network).
+Library for typed server↔client communication across multiple Minecraft platforms — Bukkit/Paper plugins and Fabric/Forge/NeoForge mods — with a shared registration model (`TypesManager` + `MessagesManager`) so the same channel/message concepts work regardless of platform.
 
-## Getting Started
+## Modules
 
-### IntelliJ IDEA
-This guide will show how to import the MultiLoader Template into IntelliJ IDEA. The setup process is roughly equivalent to setting up the modloaders independently and should be very familiar to anyone who has worked with their MDKs.
+| Module | Platform | Status |
+|---|---|---|
+| `java-common` | Plain Java | Shared core: `FriendlyByteBuf`, `TypesManager`, exceptions, serialization registry. No Minecraft dependency. |
+| `common` | Fabric/Forge/NeoForge shared code | Compiled against vanilla Minecraft only. |
+| `bukkit` | Bukkit/Spigot | Full implementation (`ServerAPI`, `MessagesManager` over plugin messaging channels). |
+| `paper` | Paper | Currently an empty placeholder — Paper servers should depend on `bukkit` instead, since Paper implements the Bukkit API. |
+| `fabric` | Fabric | Full implementation, built on `net.minecraft.network.codec.StreamCodec` + `PayloadTypeRegistry`. |
+| `forge` | Forge | Full implementation, built on `StreamCodec` + Forge `Channel`. |
+| `neoforge` | NeoForge | Full implementation, built on `StreamCodec` + `PayloadRegistrar`. |
 
-1. Clone or download this repository to your computer.
-2. Configure the project by setting the properties in the `gradle.properties` file. You will also need to change the `rootProject.name`  property in `settings.gradle`, this should match the folder name of your project, or else IDEA may complain.
-3. Open the template's root folder as a new project in IDEA. This is the folder that contains this README.md file and the gradlew executable.
-4. If your default JVM/JDK is not Java 21 you will encounter an error when opening the project. This error is fixed by going to `File > Settings > Build, Execution, Deployment > Build Tools > Gradle > Gradle JVM` and changing the value to a valid Java 21 JVM. You will also need to set the Project SDK to Java 21. This can be done by going to `File > Project Structure > Project SDK`. Once both have been set open the Gradle tab in IDEA and click the refresh button to reload the project.
-5. Open your Run/Debug Configurations. Under the `Application` category there should now be options to run Fabric and NeoForge projects. Select one of the client options and try to run it.
-6. Assuming you were able to run the game in step 5 your workspace should now be set up.
+Targets Minecraft 1.21.
 
-### Eclipse
-While it is possible to use this template in Eclipse it is not recommended. During the development of this template multiple critical bugs and quirks related to Eclipse were found at nearly every level of the required build tools. While we continue to work with these tools to report and resolve issues support for projects like these are not there yet. For now Eclipse is considered unsupported by this project. The development cycle for build tools is notoriously slow so there are no ETAs available.
+## Installation
 
-## Development Guide
-When using this template the majority of your mod should be developed in the `common` project. The `common` project is compiled against the vanilla game and is used to hold code that is shared between the different loader-specific versions of your mod. The `common` project has no knowledge or access to ModLoader specific code, apis, or concepts. Code that requires something from a specific loader must be done through the project that is specific to that loader, such as the `fabric` or `neoforge` projects.
+```groovy
+repositories {
+    maven { url 'https://jitpack.io' }
+}
 
-Loader specific projects such as the `fabric` and `neoforge` project are used to load the `common` project into the game. These projects also define code that is specific to that loader. Loader specific projects can access all the code in the `common` project. It is important to remember that the `common` project can not access code from loader specific projects.
+dependencies {
+    // pick the module(s) for the platform(s) you target
+    implementation 'com.github.feeldev12.NetworkingMessages:bukkit:1.0.0'
+    // implementation 'com.github.feeldev12.NetworkingMessages:fabric:1.0.0'
+    // implementation 'com.github.feeldev12.NetworkingMessages:forge:1.0.0'
+    // implementation 'com.github.feeldev12.NetworkingMessages:neoforge:1.0.0'
+}
+```
 
-## Removing Platforms and Loaders
-While this template has support for many modloaders, new loaders may appear in the future, and existing loaders may become less relevant.
+Each platform module already pulls in `java-common` (and `common` for Minecraft-based loaders) transitively.
 
-Removing loader specific projects is as easy as deleting the folder, and removing the `include("projectname")` line from the `settings.gradle` file.
-For example if you wanted to remove support for `forge` you would follow the following steps:
+## Quick start (Bukkit/Paper)
 
-1. Delete the subproject folder. For example, delete `MultiLoader-Template/forge`.
-2. Remove the project from `settings.gradle`. For example, remove `include("forge")`. 
+Bukkit has no access to Minecraft's internal networking classes, so messages here implement `PluginMessageListener` directly and (de)serialize to `byte[]` via `FriendlyByteBuf`, this library's own Netty `ByteBuf` wrapper (varint/UTF/UUID helpers, plus optional gzip compression above a size threshold).
+
+```java
+public class HelloMessage extends AbstractMessage<HelloMessage> implements PluginMessageListener {
+    private String text;
+
+    public HelloMessage() {}
+    public HelloMessage(String text) { this.text = text; }
+
+    @Override
+    public byte[] sendMessage(HelloMessage message) {
+        FriendlyByteBuf buf = new FriendlyByteBuf();
+        buf.writeUtf(message.text);
+        return buf.readOnlyNecessaryBytes();
+    }
+
+    @Override
+    public void onPluginMessageReceived(String channel, Player player, byte[] message) {
+        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.wrappedBuffer(message));
+        String text = buf.readUtf();
+        player.sendMessage("Server says: " + text);
+    }
+}
+```
+
+```java
+public class MyPlugin extends JavaPlugin {
+    private ServerAPI serverAPI;
+
+    @Override
+    public void onEnable() {
+        serverAPI = new ServerAPI(this, "myplugin");
+        MessageType helloType = serverAPI.getTypesManager().registerMessageType("hello", true);
+        serverAPI.getMessagesManager().registerMessage(helloType, new HelloMessage());
+    }
+
+    public void greet(Player player) {
+        serverAPI.getMessagesManager().sendMessageToClient(player, new HelloMessage("hi from the server!"));
+    }
+}
+```
+
+`registerMessageType(channelId, serverListener)` reserves the channel and packet id; `serverListener = true` means the server also listens for this message coming from the client (registers an incoming channel), not just sends it.
+
+## Quick start (Fabric / Forge / NeoForge)
+
+On Minecraft-loader platforms, messages implement `IModMessage<T>`, which extends `net.minecraft.network.codec.StreamCodec<ByteBuf, T>` directly — you write `encode`/`decode` the same way you would for a vanilla `CustomPacketPayload`, rather than going through `FriendlyByteBuf`. The registered instance acts as both the message's "prototype" (its `encode`/`decode` are the codec) and the id holder — `encode`/`decode` must read/write through their `value`/return value, not `this`.
+
+This message class is loader-agnostic — write it once in your mod's shared code and it works on Fabric, Forge and NeoForge unchanged:
+
+```java
+public class HelloMessage extends AbstractMessage<HelloMessage> {
+    private String text;
+
+    public HelloMessage(MessageType type) { super(type); }
+    public HelloMessage(MessageType type, String text) { super(type); this.text = text; }
+
+    @Override
+    public void encode(ByteBuf buf, HelloMessage value) {
+        ByteBufCodecs.STRING_UTF8.encode(buf, value.text);
+    }
+
+    @Override
+    public HelloMessage decode(ByteBuf buf) {
+        return new HelloMessage(getMessageType(), ByteBufCodecs.STRING_UTF8.decode(buf));
+    }
+
+    @Override
+    public void handleOnServer(ServerPlayer sender) {
+        System.out.println(sender.getName().getString() + " says: " + text);
+    }
+}
+```
+
+`registerMessage` still goes through `TypesManager`/`MessagesManager` on all three, but each platform's `MessagesManager` wires the message into that loader's native payload registry underneath (`PayloadTypeRegistry` on Fabric, `Channel` on Forge, `PayloadRegistrar` on NeoForge) — you never touch those directly.
+
+### Fabric
+
+```java
+public class MyModFabric implements ModInitializer {
+    public static ServerAPI serverAPI;
+    public static MessageType helloType;
+
+    @Override
+    public void onInitialize() {
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+            serverAPI = new ServerAPI(server, "mymod");
+            helloType = serverAPI.getTypesManager().registerMessageType("hello", true);
+            serverAPI.getMessagesManager().registerMessage(helloType, new HelloMessage(helloType));
+        });
+    }
+
+    public static void greet(ServerPlayer player) {
+        serverAPI.getMessagesManager().sendMessageToClient(player, new HelloMessage(helloType, "hi from Fabric!"));
+    }
+}
+```
+
+Client side mirrors it with `new ClientAPI("mymod")` instead of `ServerAPI`, and `clientAPI.getMessagesManager().sendMessageToServer(...)` to talk back (only works if `helloType` was registered with `serverListener = true`).
+
+### Forge
+
+Channel registration happens immediately inside `registerMessage`, so it can run straight from the mod constructor — but a live `MinecraftServer` reference for *sending* only exists once the server starts, so `ServerAPI` is built without one and wired up later:
+
+```java
+@Mod("mymod")
+public class MyModForge {
+    public static ServerAPI serverAPI;
+
+    public MyModForge() {
+        serverAPI = new ServerAPI("mymod");
+        MessageType helloType = serverAPI.getTypesManager().registerMessageType("hello", true);
+        serverAPI.getMessagesManager().registerMessage(helloType, new HelloMessage(helloType));
+
+        MinecraftForge.EVENT_BUS.addListener((ServerStartingEvent event) -> serverAPI.setServer(event.getServer()));
+    }
+}
+```
+
+### NeoForge
+
+`ServerAPI(String, IEventBus)` registers this instance's payload/config-task handlers on your mod event bus for you:
+
+```java
+@Mod("mymod")
+public class MyModNeoForge {
+    public static ServerAPI serverAPI;
+
+    public MyModNeoForge(IEventBus modEventBus) {
+        serverAPI = new ServerAPI("mymod", modEventBus);
+        MessageType helloType = serverAPI.getTypesManager().registerMessageType("hello", true);
+        serverAPI.getMessagesManager().registerMessage(helloType, new HelloMessage(helloType));
+    }
+}
+```
+
+(The single-arg `ServerAPI(String)` constructor still exists for when you'd rather call `onRegisterPayloads`/`onRegisterConfigTasks` from your own event listeners.)
+
+## License
+
+CC0-1.0.

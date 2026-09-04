@@ -10,6 +10,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ConfigurationTask;
 import net.neoforged.neoforge.network.configuration.ICustomConfigurationTask;
+import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.network.event.RegisterConfigurationTasksEvent;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
@@ -21,8 +22,10 @@ public class ServerAPI implements NetworkAPI<ServerPlayer, AbstractMessage<?>> {
     private boolean compressionEnabled;
 
     /**
-     * Use during mod initialization (e.g. inside your {@code @Mod} constructor).
-     * The library auto-registers payloads with NeoForge — no manual event call needed.
+     * Use during mod initialization (e.g. inside your {@code @Mod} constructor). This does
+     * NOT register payloads by itself: call {@link #onRegisterPayloads(RegisterPayloadHandlersEvent)}
+     * and {@link #onRegisterConfigTasks(RegisterConfigurationTasksEvent)} from your own mod
+     * event bus listeners, or use {@link #ServerAPI(String, IEventBus)} to have that done for you.
      * Call {@link #setServer(MinecraftServer)} when the server is available.
      */
     public ServerAPI(String namespace) {
@@ -30,6 +33,16 @@ public class ServerAPI implements NetworkAPI<ServerPlayer, AbstractMessage<?>> {
         this.messagesManager = new MessagesManager(null, namespace);
         this.compressionEnabled = false;
         CommonAPI.setNetworkAPI(this);
+    }
+
+    /**
+     * Same as {@link #ServerAPI(String)}, but also registers this instance's payload and
+     * configuration-task handlers on {@code modEventBus}, so no manual event wiring is needed.
+     */
+    public ServerAPI(String namespace, IEventBus modEventBus) {
+        this(namespace);
+        modEventBus.addListener(this::onRegisterPayloads);
+        modEventBus.addListener(this::onRegisterConfigTasks);
     }
 
     public ServerAPI(MinecraftServer server, String namespace) {
