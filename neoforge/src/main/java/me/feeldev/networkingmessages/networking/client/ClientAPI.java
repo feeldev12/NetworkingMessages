@@ -5,12 +5,9 @@ import me.feeldev.networkingmessages.networking.managers.MessagesManager;
 import me.feeldev.networkingmessages.networking.common.TypesManager;
 import me.feeldev.networkingmessages.networking.models.AbstractMessage;
 import me.feeldev.networkingmessages.networking.common.NetworkAPI;
-import net.minecraft.client.Minecraft;
-import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
-import net.neoforged.neoforge.network.PacketDistributor;
 
 @OnlyIn(Dist.CLIENT)
 public class ClientAPI implements NetworkAPI<ServerPlayer, AbstractMessage<?>> {
@@ -24,7 +21,7 @@ public class ClientAPI implements NetworkAPI<ServerPlayer, AbstractMessage<?>> {
     }
 
     public void sendMessageToServer(AbstractMessage<?> message) {
-        PacketDistributor.sendToServer(message);
+        MessagesManager.getInstance().sendMessageToServer(message);
     }
 
     @Override

@@ -8,7 +8,6 @@ import me.feeldev.networkingmessages.networking.common.NetworkAPI;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.network.PacketDistributor;
 
 @OnlyIn(Dist.CLIENT)
 public class ClientAPI implements NetworkAPI<ServerPlayer, AbstractMessage<?>> {
@@ -22,7 +21,7 @@ public class ClientAPI implements NetworkAPI<ServerPlayer, AbstractMessage<?>> {
     }
 
     public void sendMessageToServer(AbstractMessage<?> message) {
-        MessagesManager.getInstance().getChannel().send(message, PacketDistributor.SERVER.noArg());
+        MessagesManager.getInstance().sendMessageToServer(message);
     }
 
     @Override

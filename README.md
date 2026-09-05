@@ -107,10 +107,15 @@ public class HelloMessage extends AbstractMessage<HelloMessage> {
     public void handleOnServer(ServerPlayer sender) {
         System.out.println(sender.getName().getString() + " says: " + text);
     }
+
+    @Override
+    public void handleOnClient() {
+        System.out.println("Server says: " + text);
+    }
 }
 ```
 
-`registerMessage` still goes through `TypesManager`/`MessagesManager` on all three, but each platform's `MessagesManager` wires the message into that loader's native payload registry underneath (`PayloadTypeRegistry` on Fabric, `Channel` on Forge, `PayloadRegistrar` on NeoForge) — you never touch those directly.
+`registerMessage` still goes through `TypesManager`/`MessagesManager` on all three, but each platform's `MessagesManager` wires the message into that loader's native payload registry underneath (`PayloadTypeRegistry` on Fabric, `Channel` on Forge, `PayloadRegistrar` on NeoForge) — you never touch those directly. On all three, `registerMessageType(channelId, serverListener)` controls both directions the same way: server→client is always wired, and `serverListener = true` additionally wires client→server (`handleOnServer` fires; without it, the server never registers a receiver for this channel at all).
 
 ### Fabric
 
@@ -134,7 +139,28 @@ public class MyModFabric implements ModInitializer {
 }
 ```
 
-Client side mirrors it with `new ClientAPI("mymod")` instead of `ServerAPI`, and `clientAPI.getMessagesManager().sendMessageToServer(...)` to talk back (only works if `helloType` was registered with `serverListener = true`).
+Fabric keeps a fully separate client-side registry (`ClientAPI` + its own `TypesManager`/`MessagesManager`), so the client registers the same channel independently:
+
+```java
+@Environment(EnvType.CLIENT)
+public class MyModFabricClient implements ClientModInitializer {
+    public static ClientAPI clientAPI;
+    public static MessageType helloType;
+
+    @Override
+    public void onInitializeClient() {
+        clientAPI = new ClientAPI("mymod");
+        helloType = clientAPI.getTypesManager().registerMessageType("hello", true);
+        clientAPI.getMessagesManager().registerMessage(helloType, new HelloMessage(helloType));
+    }
+
+    public static void tellServer(String text) {
+        clientAPI.getMessagesManager().sendMessageToServer(new HelloMessage(helloType, text));
+    }
+}
+```
+
+`sendMessageToServer` throws if `helloType` wasn't registered with `serverListener = true` — that flag is what tells the server to expect (and register a receiver for) traffic coming the other way.
 
 ### Forge
 
@@ -144,10 +170,11 @@ Channel registration happens immediately inside `registerMessage`, so it can run
 @Mod("mymod")
 public class MyModForge {
     public static ServerAPI serverAPI;
+    public static MessageType helloType;
 
     public MyModForge() {
         serverAPI = new ServerAPI("mymod");
-        MessageType helloType = serverAPI.getTypesManager().registerMessageType("hello", true);
+        helloType = serverAPI.getTypesManager().registerMessageType("hello", true);
         serverAPI.getMessagesManager().registerMessage(helloType, new HelloMessage(helloType));
 
         MinecraftForge.EVENT_BUS.addListener((ServerStartingEvent event) -> serverAPI.setServer(event.getServer()));
@@ -157,6 +184,15 @@ public class MyModForge {
 
 Configuration-phase payloads don't need any extra wiring here: Forge's `ServerAPI` constructor already hooks `MinecraftForge.EVENT_BUS` itself to register those during login.
 
+Unlike Fabric, Forge's `ClientAPI` and `ServerAPI` share the same underlying `MessagesManager` singleton — the mod constructor above already runs on the client too (Forge loads mods on both distributions), so `registerMessage` only happens once. To send from the client, just reuse `helloType` and skip registering again:
+
+```java
+ClientAPI clientAPI = new ClientAPI("mymod");
+clientAPI.sendMessageToServer(new HelloMessage(MyModForge.helloType, "hi from the client!"));
+```
+
+Calling `clientAPI.getTypesManager().registerMessageType(...)` here would create a second, unrelated `MessageType` and then fail with "already registered" when you pass it to `registerMessage` — that method is already covered by the mod constructor.
+
 ### NeoForge
 
 `ServerAPI(String, IEventBus)` registers this instance's payload/config-task handlers on your mod event bus for you:
@@ -165,16 +201,24 @@ Configuration-phase payloads don't need any extra wiring here: Forge's `ServerAP
 @Mod("mymod")
 public class MyModNeoForge {
     public static ServerAPI serverAPI;
+    public static MessageType helloType;
 
     public MyModNeoForge(IEventBus modEventBus) {
         serverAPI = new ServerAPI("mymod", modEventBus);
-        MessageType helloType = serverAPI.getTypesManager().registerMessageType("hello", true);
+        helloType = serverAPI.getTypesManager().registerMessageType("hello", true);
         serverAPI.getMessagesManager().registerMessage(helloType, new HelloMessage(helloType));
     }
 }
 ```
 
 (The single-arg `ServerAPI(String)` constructor still exists for when you'd rather call `onRegisterPayloads`/`onRegisterConfigTasks` from your own event listeners.)
+
+Same singleton-`MessagesManager` situation as Forge: the mod constructor above already runs on the client, so sending from the client just reuses `helloType` instead of registering again:
+
+```java
+ClientAPI clientAPI = new ClientAPI("mymod");
+clientAPI.sendMessageToServer(new HelloMessage(MyModNeoForge.helloType, "hi from the client!"));
+```
 
 ## License
 

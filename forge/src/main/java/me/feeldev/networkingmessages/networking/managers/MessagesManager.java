@@ -83,12 +83,12 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
             buf -> prototype.decode(buf)
         );
 
+        clientboundFlow.addMain(prototype.type(), codec,
+            (msg, ctx) -> msg.handleOnClient());
+
         if (messageType.isServerListener()) {
             serverboundFlow.addMain(prototype.type(), codec,
                 (msg, ctx) -> msg.handleOnServer(ctx.getSender()));
-        } else {
-            clientboundFlow.addMain(prototype.type(), codec,
-                (msg, ctx) -> msg.handleOnClient());
         }
         CommonAPI.LOGGER.info("[NetworkingMessages] Registered message: {}", messageType.getChannelIdWithNamespace());
     }
@@ -156,5 +156,19 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
     @Override
     public MessageType getMessageTypeByClass(AbstractMessage<?> message) {
         return classTypes.get(message.getClass());
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public void sendMessageToServer(AbstractMessage<?> message) {
+        MessageType messageType = getMessageTypeByClass(message);
+        if (messageType == null) {
+            throw new RegistryMessageException("Message " + message.getClass().getName() + " not registered");
+        }
+        if (!messageType.isServerListener()) {
+            throw new RegistryMessageException("Message " + messageType.getChannelIdWithNamespace() + " is not a server listener");
+        }
+        AbstractMessage abstractMessage = messages.get(messageType);
+        message.updateProperties(messageType, abstractMessage.type());
+        getChannel().send(message, PacketDistributor.SERVER.noArg());
     }
 }

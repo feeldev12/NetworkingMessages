@@ -10,7 +10,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerConfigurationPacketListenerImpl;
 import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.handling.DirectionalPayloadHandler;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 import org.jetbrains.annotations.NotNull;
 
@@ -72,18 +71,22 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
     }
 
     private <T extends AbstractMessage<T>> void registerPayload(PayloadRegistrar registrar, MessageType messageType, T message) {
-        registrar.playBidirectional(
+        registrar.playToClient(
             message.type(),
             message,
-            new DirectionalPayloadHandler<>(
-                (payload, context) -> {
-                    try {
-                        payload.handleOnClient();
-                    } catch (Exception e) {
-                        CommonAPI.LOGGER.error("[NetworkingMessages] Client handler exception for {}: {}", messageType.getChannelIdWithNamespace(), e.getMessage());
-                        throw e;
-                    }
-                },
+            (payload, context) -> {
+                try {
+                    payload.handleOnClient();
+                } catch (Exception e) {
+                    CommonAPI.LOGGER.error("[NetworkingMessages] Client handler exception for {}: {}", messageType.getChannelIdWithNamespace(), e.getMessage());
+                    throw e;
+                }
+            }
+        );
+        if (messageType.isServerListener()) {
+            registrar.playToServer(
+                message.type(),
+                message,
                 (payload, context) -> {
                     try {
                         payload.handleOnServer((ServerPlayer) context.player());
@@ -92,8 +95,8 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
                         throw e;
                     }
                 }
-            )
-        );
+            );
+        }
         CommonAPI.LOGGER.info("[NetworkingMessages] Registered message: {}", messageType.getChannelIdWithNamespace());
     }
 
@@ -191,5 +194,19 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
     @Override
     public MessageType getMessageTypeByClass(AbstractMessage<?> message) {
         return classTypes.get(message.getClass());
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public void sendMessageToServer(AbstractMessage<?> message) {
+        MessageType messageType = getMessageTypeByClass(message);
+        if (messageType == null) {
+            throw new RegistryMessageException("Message " + message.getClass().getName() + " not registered");
+        }
+        if (!messageType.isServerListener()) {
+            throw new RegistryMessageException("Message " + messageType.getChannelIdWithNamespace() + " is not a server listener");
+        }
+        AbstractMessage abstractMessage = messages.get(messageType);
+        message.updateProperties(messageType, abstractMessage.type());
+        PacketDistributor.sendToServer(message);
     }
 }
