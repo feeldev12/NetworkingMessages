@@ -20,6 +20,7 @@ public class ServerAPI implements NetworkAPI<ServerPlayer, AbstractMessage<?>> {
     private final TypesManager typesManager;
     private final MessagesManager messagesManager;
     private boolean compressionEnabled;
+    private boolean optional;
 
     /**
      * Use during mod initialization (e.g. inside your {@code @Mod} constructor). This does
@@ -52,8 +53,21 @@ public class ServerAPI implements NetworkAPI<ServerPlayer, AbstractMessage<?>> {
         CommonAPI.setNetworkAPI(this);
     }
 
+    /**
+     * Registers this namespace's payloads as optional. NeoForge refuses to connect to a server
+     * without NeoForge (Paper, Spigot, vanilla) while the client has required payloads, so a
+     * client mod whose server side is a Bukkit/Paper plugin must call this before payloads are
+     * registered (e.g. in the mod constructor).
+     */
+    public void setOptional(boolean optional) {
+        this.optional = optional;
+    }
+
     public void onRegisterPayloads(RegisterPayloadHandlersEvent event) {
         var registrar = event.registrar(messagesManager.getNamespace());
+        if (optional) {
+            registrar = registrar.optional();
+        }
         messagesManager.flush(registrar);
         messagesManager.flushConfig(registrar);
     }
