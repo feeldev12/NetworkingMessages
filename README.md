@@ -184,7 +184,7 @@ public class MyModForge {
 
 Configuration-phase payloads don't need any extra wiring here: Forge's `ServerAPI` constructor already hooks `MinecraftForge.EVENT_BUS` itself to register those during login.
 
-Unlike Fabric, Forge's `ClientAPI` and `ServerAPI` share the same underlying `MessagesManager` singleton — the mod constructor above already runs on the client too (Forge loads mods on both distributions), so `registerMessage` only happens once. To send from the client, just reuse `helloType` and skip registering again:
+Unlike Fabric, Forge's `ClientAPI` and `ServerAPI` share the same underlying `MessagesManager` (the one for their namespace, so several mods on this library don't clash) — the mod constructor above already runs on the client too (Forge loads mods on both distributions), so `registerMessage` only happens once. To send from the client, just reuse `helloType` and skip registering again:
 
 ```java
 ClientAPI clientAPI = new ClientAPI("mymod");
@@ -213,7 +213,7 @@ public class MyModNeoForge {
 
 (The single-arg `ServerAPI(String)` constructor still exists for when you'd rather call `onRegisterPayloads`/`onRegisterConfigTasks` from your own event listeners.)
 
-Same singleton-`MessagesManager` situation as Forge: the mod constructor above already runs on the client, so sending from the client just reuses `helloType` instead of registering again:
+Same shared per-namespace `MessagesManager` as Forge: the mod constructor above already runs on the client, so sending from the client just reuses `helloType` instead of registering again:
 
 ```java
 ClientAPI clientAPI = new ClientAPI("mymod");

@@ -27,6 +27,12 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
     private final Map<MessageType, AbstractMessage<?>> messages = new ConcurrentHashMap<>();
     private final Map<Class<?>, MessageType> classTypes = new ConcurrentHashMap<>();
     private static MessagesManager instance;
+    /**
+     * Every manager by namespace. Each mod that uses this library on the same game builds its own
+     * {@code ServerAPI} (and so its own manager); a {@code ClientAPI} sends through the one for its
+     * namespace instead of whichever was built last.
+     */
+    private static final Map<String, MessagesManager> BY_NAMESPACE = new ConcurrentHashMap<>();
 
     private MinecraftServer server;
     private volatile Channel<CustomPacketPayload> builtChannel;
@@ -44,10 +50,23 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
         this.clientboundFlow = conn.play().flow(PacketFlow.CLIENTBOUND);
         this.serverboundFlow = clientboundFlow.flow(PacketFlow.SERVERBOUND);
         instance = this;
+        BY_NAMESPACE.put(namespace, this);
     }
 
+    /**
+     * The manager most recently built, whatever its namespace.
+     *
+     * @deprecated with several mods on this library there's one manager per namespace; use
+     * {@link #forNamespace(String)}.
+     */
+    @Deprecated
     public static MessagesManager getInstance() {
         return instance;
+    }
+
+    /** The manager built for {@code namespace}, or {@code null} if no {@code ServerAPI} created one yet. */
+    public static MessagesManager forNamespace(String namespace) {
+        return BY_NAMESPACE.get(namespace);
     }
 
     public void setServer(MinecraftServer server) {

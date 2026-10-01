@@ -12,16 +12,23 @@ import net.neoforged.api.distmarker.OnlyIn;
 @OnlyIn(Dist.CLIENT)
 public class ClientAPI implements NetworkAPI<ServerPlayer, AbstractMessage<?>> {
     private final TypesManager typesManager;
+    private final String namespace;
     private boolean compressionEnabled;
 
+    /**
+     * Sends client→server messages through the {@link MessagesManager} of this namespace, which
+     * the mod's {@code ServerAPI} creates (on this loader the {@code ServerAPI} also registers the
+     * messages, on both distributions).
+     */
     public ClientAPI(String namespace) {
         this.typesManager = new TypesManager(namespace);
+        this.namespace = namespace;
         this.compressionEnabled = false;
         CommonAPI.setNetworkAPI(this);
     }
 
     public void sendMessageToServer(AbstractMessage<?> message) {
-        MessagesManager.getInstance().sendMessageToServer(message);
+        getMessagesManager().sendMessageToServer(message);
     }
 
     @Override
@@ -31,7 +38,11 @@ public class ClientAPI implements NetworkAPI<ServerPlayer, AbstractMessage<?>> {
 
     @Override
     public MessagesManager getMessagesManager() {
-        return MessagesManager.getInstance();
+        MessagesManager manager = MessagesManager.forNamespace(namespace);
+        if (manager == null) {
+            throw new IllegalStateException("No MessagesManager for namespace '" + namespace + "': create the ServerAPI for it first");
+        }
+        return manager;
     }
 
     public void setCompressionEnabled(boolean compressionEnabled) {
