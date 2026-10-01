@@ -37,7 +37,8 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
     private MinecraftServer server;
     private volatile Channel<CustomPacketPayload> builtChannel;
     private final PayloadFlow<RegistryFriendlyByteBuf, CustomPacketPayload> clientboundFlow;
-    private final PayloadFlow<RegistryFriendlyByteBuf, CustomPacketPayload> serverboundFlow;
+    // Forge allows one registration per payload type: two-way messages go in the bidirectional flow.
+    private final PayloadFlow<RegistryFriendlyByteBuf, CustomPacketPayload> bidirectionalFlow;
 
     public MessagesManager(MinecraftServer server, String namespace) {
         this.server = server;
@@ -48,7 +49,7 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
             .serverAcceptedVersions((status, i) -> true)
             .payloadChannel();
         this.clientboundFlow = conn.play().flow(PacketFlow.CLIENTBOUND);
-        this.serverboundFlow = clientboundFlow.flow(PacketFlow.SERVERBOUND);
+        this.bidirectionalFlow = clientboundFlow.flow((PacketFlow) null);
         instance = this;
         BY_NAMESPACE.put(namespace, this);
     }
@@ -102,12 +103,17 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
             buf -> prototype.decode(buf)
         );
 
-        clientboundFlow.addMain(prototype.type(), codec,
-            (msg, ctx) -> msg.handleOnClient());
-
         if (messageType.isServerListener()) {
-            serverboundFlow.addMain(prototype.type(), codec,
-                (msg, ctx) -> msg.handleOnServer(ctx.getSender()));
+            bidirectionalFlow.addMain(prototype.type(), codec, (msg, ctx) -> {
+                if (ctx.isServerSide()) {
+                    msg.handleOnServer(ctx.getSender());
+                } else {
+                    msg.handleOnClient();
+                }
+            });
+        } else {
+            clientboundFlow.addMain(prototype.type(), codec,
+                (msg, ctx) -> msg.handleOnClient());
         }
         CommonAPI.LOGGER.info("[NetworkingMessages] Registered message: {}", messageType.getChannelIdWithNamespace());
     }
