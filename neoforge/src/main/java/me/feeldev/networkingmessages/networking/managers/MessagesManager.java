@@ -10,6 +10,8 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerConfigurationPacketListenerImpl;
 import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.handling.DirectionalPayloadHandler;
+import net.neoforged.neoforge.network.handling.IPayloadHandler;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 import org.jetbrains.annotations.NotNull;
 
@@ -18,6 +20,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractMessage<?>> {
     private static MessagesManager instance;
+    /**
+     * Every manager by namespace. Each mod that uses this library on the same game builds its own
+     * {@code ServerAPI} (and so its own manager); a {@code ClientAPI} sends through the one for its
+     * namespace instead of whichever was built last.
+     */
+    private static final Map<String, MessagesManager> BY_NAMESPACE = new ConcurrentHashMap<>();
 
     private final Map<MessageType, AbstractMessage<?>> messages = new ConcurrentHashMap<>();
     private final Map<Class<?>, MessageType> classTypes = new ConcurrentHashMap<>();
@@ -28,10 +36,23 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
         this.server = server;
         this.namespace = namespace;
         instance = this;
+        BY_NAMESPACE.put(namespace, this);
     }
 
+    /**
+     * The manager most recently built, whatever its namespace.
+     *
+     * @deprecated with several mods on this library there's one manager per namespace; use
+     * {@link #forNamespace(String)}.
+     */
+    @Deprecated
     public static MessagesManager getInstance() {
         return instance;
+    }
+
+    /** The manager built for {@code namespace}, or {@code null} if no {@code ServerAPI} created one yet. */
+    public static MessagesManager forNamespace(String namespace) {
+        return BY_NAMESPACE.get(namespace);
     }
 
     public void setServer(MinecraftServer server) {
@@ -70,64 +91,56 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
         });
     }
 
+    // NeoForge allows one registration per payload id: a message that travels both ways must be
+    // registered once as bidirectional, with a handler per direction.
     private <T extends AbstractMessage<T>> void registerPayload(PayloadRegistrar registrar, MessageType messageType, T message) {
-        registrar.playToClient(
-            message.type(),
-            message,
-            (payload, context) -> {
+        IPayloadHandler<T> toClient = (payload, context) -> {
+            try {
+                payload.handleOnClient();
+            } catch (Exception e) {
+                CommonAPI.LOGGER.error("[NetworkingMessages] Client handler exception for {}: {}", messageType.getChannelIdWithNamespace(), e.getMessage());
+                throw e;
+            }
+        };
+        if (messageType.isServerListener()) {
+            IPayloadHandler<T> toServer = (payload, context) -> {
                 try {
-                    payload.handleOnClient();
+                    payload.handleOnServer((ServerPlayer) context.player());
                 } catch (Exception e) {
-                    CommonAPI.LOGGER.error("[NetworkingMessages] Client handler exception for {}: {}", messageType.getChannelIdWithNamespace(), e.getMessage());
+                    CommonAPI.LOGGER.error("[NetworkingMessages] Server handler exception for {}: {}", messageType.getChannelIdWithNamespace(), e.getMessage());
                     throw e;
                 }
-            }
-        );
-        if (messageType.isServerListener()) {
-            registrar.playToServer(
-                message.type(),
-                message,
-                (payload, context) -> {
-                    try {
-                        payload.handleOnServer((ServerPlayer) context.player());
-                    } catch (Exception e) {
-                        CommonAPI.LOGGER.error("[NetworkingMessages] Server handler exception for {}: {}", messageType.getChannelIdWithNamespace(), e.getMessage());
-                        throw e;
-                    }
-                }
-            );
+            };
+            registrar.playBidirectional(message.type(), message, new DirectionalPayloadHandler<>(toClient, toServer));
+        } else {
+            registrar.playToClient(message.type(), message, toClient);
         }
         CommonAPI.LOGGER.info("[NetworkingMessages] Registered message: {}", messageType.getChannelIdWithNamespace());
     }
 
     private <T extends AbstractMessage<T>> void registerConfigPayload(PayloadRegistrar registrar, MessageType messageType, T message) {
-        registrar.configurationToClient(
-            message.type(),
-            message,
-            (payload, context) -> {
+        IPayloadHandler<T> toClient = (payload, context) -> {
+            try {
+                payload.handleOnClient();
+            } catch (Exception e) {
+                CommonAPI.LOGGER.error("[NetworkingMessages] Client handler exception for {}: {}", messageType.getChannelIdWithNamespace(), e.getMessage());
+                throw e;
+            }
+        };
+        if (messageType.isServerListener()) {
+            IPayloadHandler<T> toServer = (payload, context) -> {
                 try {
-                    payload.handleOnClient();
+                    ServerConfigurationPacketListenerImpl handler =
+                        (ServerConfigurationPacketListenerImpl) context.listener();
+                    payload.handleOnConfigurationServer(handler);
                 } catch (Exception e) {
-                    CommonAPI.LOGGER.error("[NetworkingMessages] Client handler exception for {}: {}", messageType.getChannelIdWithNamespace(), e.getMessage());
+                    CommonAPI.LOGGER.error("[NetworkingMessages] Server handler exception for {}: {}", messageType.getChannelIdWithNamespace(), e.getMessage());
                     throw e;
                 }
-            }
-        );
-        if (messageType.isServerListener()) {
-            registrar.configurationToServer(
-                message.type(),
-                message,
-                (payload, context) -> {
-                    try {
-                        ServerConfigurationPacketListenerImpl handler =
-                            (ServerConfigurationPacketListenerImpl) context.listener();
-                        payload.handleOnConfigurationServer(handler);
-                    } catch (Exception e) {
-                        CommonAPI.LOGGER.error("[NetworkingMessages] Server handler exception for {}: {}", messageType.getChannelIdWithNamespace(), e.getMessage());
-                        throw e;
-                    }
-                }
-            );
+            };
+            registrar.configurationBidirectional(message.type(), message, new DirectionalPayloadHandler<>(toClient, toServer));
+        } else {
+            registrar.configurationToClient(message.type(), message, toClient);
         }
         CommonAPI.LOGGER.info("[NetworkingMessages] Registered configuration message: {}", messageType.getChannelIdWithNamespace());
     }
