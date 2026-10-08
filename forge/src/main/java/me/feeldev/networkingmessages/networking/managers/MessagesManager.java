@@ -112,6 +112,13 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
     }
 
     private static void onPayload(ResourceLocation id, NetworkEvent event) {
+        // An EventNetworkChannel also delivers ChannelRegistrationChangeEvent (and other non-payload
+        // events) to its listeners; those carry no payload and must not be decoded as messages.
+        boolean payloadEvent = event instanceof NetworkEvent.ServerCustomPayloadEvent
+                || event instanceof NetworkEvent.ClientCustomPayloadEvent;
+        if (!payloadEvent || event.getPayload() == null) {
+            return;
+        }
         NetworkEvent.Context ctx = event.getSource().get();
         NetworkDirection direction = ctx.getDirection();
         if (direction != NetworkDirection.PLAY_TO_CLIENT && direction != NetworkDirection.PLAY_TO_SERVER) {
