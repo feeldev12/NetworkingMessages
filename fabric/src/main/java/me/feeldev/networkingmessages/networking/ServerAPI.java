@@ -1,19 +1,12 @@
 package me.feeldev.networkingmessages.networking;
 
 import me.feeldev.networkingmessages.networking.common.CommonAPI;
-import me.feeldev.networkingmessages.networking.common.MessageType;
 import me.feeldev.networkingmessages.networking.common.NetworkAPI;
 import me.feeldev.networkingmessages.networking.common.TypesManager;
 import me.feeldev.networkingmessages.networking.managers.MessagesManager;
 import me.feeldev.networkingmessages.networking.models.AbstractMessage;
-import net.fabricmc.fabric.api.networking.v1.ServerConfigurationConnectionEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerConfigurationNetworking;
-import net.minecraft.network.protocol.Packet;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.ConfigurationTask;
-
-import java.util.function.Consumer;
 
 public class ServerAPI implements NetworkAPI<ServerPlayer, AbstractMessage<?>> {
     private final TypesManager typesManager;
@@ -25,26 +18,6 @@ public class ServerAPI implements NetworkAPI<ServerPlayer, AbstractMessage<?>> {
         this.messagesManager = new MessagesManager(server, namespace);
         this.compressionEnabled = false;
         CommonAPI.setNetworkAPI(this);
-        ServerConfigurationConnectionEvents.CONFIGURE.register((handler, server1) -> {
-            for (MessageType messageType : typesManager.getMessageTypes().values()) {
-                if (!messageType.isConfigurationPhase() || messageType.isServerListener()) continue;
-                AbstractMessage<?> message = messagesManager.getMessages().get(messageType);
-                if (message == null) continue;
-                if (!ServerConfigurationNetworking.canSend(handler, message.type())) continue;
-                handler.addTask(new LibraryConfigTask(
-                        new ConfigurationTask.Type(messageType.getChannelIdWithNamespace()),
-                        message
-                ));
-            }
-        });
-    }
-
-    private record LibraryConfigTask(ConfigurationTask.Type type, AbstractMessage<?> message)
-            implements ConfigurationTask {
-        @Override
-        public void start(Consumer<Packet<?>> sender) {
-            sender.accept(ServerConfigurationNetworking.createS2CPacket(message));
-        }
     }
 
     public TypesManager getTypesManager() {
@@ -57,6 +30,14 @@ public class ServerAPI implements NetworkAPI<ServerPlayer, AbstractMessage<?>> {
 
     public MinecraftServer getServer() {
         return messagesManager.getServer();
+    }
+
+    /**
+     * Kept for source compatibility with the NeoForge build. Minecraft 1.20.1 has no payload
+     * registry that could make a client refuse to join a server without the channel, so there is
+     * nothing to relax here: this is a no-op.
+     */
+    public void setOptional(boolean optional) {
     }
 
     public void setCompressionEnabled(boolean compressionEnabled) {

@@ -1,15 +1,10 @@
 plugins {
     id 'multiloader-common'
-    id 'net.neoforged.moddev'
+    id 'net.neoforged.moddev.legacyforge'
 }
 
-neoForge {
-    neoFormVersion = neo_form_version
-    // Automatically enable AccessTransformers if the file exists
-    def at = file('src/main/resources/META-INF/accesstransformer.cfg')
-    if (at.exists()) {
-        accessTransformers.add(at.absolutePath)
-    }
+legacyForge {
+    mcpVersion = minecraft_version
     parchment {
         minecraftVersion = parchment_minecraft
         mappingsVersion = parchment_version
@@ -19,9 +14,18 @@ neoForge {
 dependencies {
     api project(':java-common')
     compileOnly group: 'org.spongepowered', name: 'mixin', version: '0.8.5'
-    // fabric and neoforge both bundle mixinextras, so it is safe to use it in common
     compileOnly group: 'io.github.llamalad7', name: 'mixinextras-common', version: '0.3.5'
     annotationProcessor group: 'io.github.llamalad7', name: 'mixinextras-common', version: '0.3.5'
+
+    // compileOnly dependencies (Minecraft, netty) are not on the test classpath by default
+    testImplementation(files(sourceSets.main.compileClasspath))
+    testImplementation(platform("org.junit:junit-bom:5.10.3"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
 }
 
 configurations {

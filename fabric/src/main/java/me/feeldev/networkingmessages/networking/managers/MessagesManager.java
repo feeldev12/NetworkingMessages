@@ -1,30 +1,25 @@
 package me.feeldev.networkingmessages.networking.managers;
 
-import me.feeldev.networkingmessages.networking.models.AbstractMessage;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import me.feeldev.networkingmessages.networking.common.CommonAPI;
-import me.feeldev.networkingmessages.networking.exceptions.RegistryMessageException;
 import me.feeldev.networkingmessages.networking.common.IMessagesManager;
 import me.feeldev.networkingmessages.networking.common.MessageType;
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+import me.feeldev.networkingmessages.networking.exceptions.RegistryMessageException;
+import me.feeldev.networkingmessages.networking.models.AbstractMessage;
+import me.feeldev.networkingmessages.networking.models.MessageCodec;
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
-import net.fabricmc.fabric.api.networking.v1.ServerConfigurationNetworking;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.ServerConfigurationPacketListenerImpl;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import net.minecraft.resources.ResourceLocation;
 
 public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractMessage<?>> {
-    private static final Set<ResourceLocation> globallyRegisteredS2C = new HashSet<>();
-    private static final Set<ResourceLocation> globallyRegisteredC2S = new HashSet<>();
-
     private final Map<MessageType, AbstractMessage> messages;
     private final Map<Class<?>, MessageType> classTypes;
     private final String namespace;
@@ -42,49 +37,34 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
         if (classTypes.putIfAbsent(message.getClass(), messageType) != null) {
             throw new RegistryMessageException("Message " + messageType.getChannelIdWithNamespace() + " already registered");
         }
+        if (messageType.isConfigurationPhase()) {
+            CommonAPI.LOGGER.warn("[NetworkingMessages] {} asks for the configuration phase, which does not exist on 1.20.1; it is sent in the play phase", messageType.getChannelIdWithNamespace());
+        }
 
         messages.put(messageType, message);
         AbstractMessage.getClassInstances().put(message.getClass(), message);
 
-        CustomPacketPayload.Type<? extends AbstractMessage<?>> id = message.type();
-        ResourceLocation payloadId = id.id();
-
-        if (messageType.isConfigurationPhase()) {
-            tryRegisterGlobally(globallyRegisteredS2C, payloadId, () -> PayloadTypeRegistry.configurationS2C().register(id, message));
-            if (messageType.isServerListener()) {
-                tryRegisterGlobally(globallyRegisteredC2S, payloadId, () -> PayloadTypeRegistry.configurationC2S().register(id, message));
-                ServerConfigurationNetworking.registerGlobalReceiver(id, (payload, context) -> {
+        if (messageType.isServerListener()) {
+            ResourceLocation id = message.type();
+            // Replaces a receiver left behind by an earlier server in the same JVM (integrated server restarts).
+            ServerPlayNetworking.unregisterGlobalReceiver(id);
+            ServerPlayNetworking.registerGlobalReceiver(id, (srv, player, handler, buf, responseSender) -> {
+                // Decode on the network thread (the buffer is released after this returns), handle on the server thread.
+                AbstractMessage<?> payload;
+                try {
+                    payload = MessageCodec.decode(message, buf);
+                } catch (Exception e) {
+                    CommonAPI.LOGGER.error("[NetworkingMessages] Exception decoding message: {}", messageType.getChannelIdWithNamespace(), e);
+                    return;
+                }
+                srv.execute(() -> {
                     try {
-                        server.execute(() -> payload.handleOnConfigurationServer(context.networkHandler()));
+                        payload.handleOnServer(player);
                     } catch (Exception e) {
                         CommonAPI.LOGGER.error("[NetworkingMessages] Exception in handler for message: {}", messageType.getChannelIdWithNamespace(), e);
-                        throw e;
                     }
                 });
-            }
-        } else {
-            tryRegisterGlobally(globallyRegisteredS2C, payloadId, () -> PayloadTypeRegistry.playS2C().register(id, message));
-            if (messageType.isServerListener()) {
-                tryRegisterGlobally(globallyRegisteredC2S, payloadId, () -> PayloadTypeRegistry.playC2S().register(id, message));
-                ServerPlayNetworking.registerGlobalReceiver(id, (payload, context) -> {
-                    try {
-                        payload.handleOnServer(context.player());
-                    } catch (Exception e) {
-                        CommonAPI.LOGGER.error("[NetworkingMessages] Exception in handler for message: {}", messageType.getChannelIdWithNamespace(), e);
-                        throw e;
-                    }
-                });
-            }
-        }
-    }
-
-    private void tryRegisterGlobally(Set<ResourceLocation> guard, ResourceLocation payloadId, Runnable registration) {
-        if (guard.add(payloadId)) {
-            try {
-                registration.run();
-            } catch (IllegalArgumentException ignored) {
-                // Already registered by client-side init in integrated server
-            }
+            });
         }
     }
 
@@ -92,75 +72,63 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
     public void unregister() {
         messages.forEach((messageType, abstractMessage) -> {
             if (messageType.isServerListener()) {
-                if (messageType.isConfigurationPhase()) {
-                    ServerConfigurationNetworking.unregisterGlobalReceiver(abstractMessage.type().id());
-                } else {
-                    ServerPlayNetworking.unregisterGlobalReceiver(abstractMessage.type().id());
-                }
+                ServerPlayNetworking.unregisterGlobalReceiver(abstractMessage.type());
             }
         });
         messages.clear();
         classTypes.clear();
-        globallyRegisteredS2C.clear();
-        globallyRegisteredC2S.clear();
         AbstractMessage.getClassInstances().clear();
     }
 
-    @SuppressWarnings("unchecked")
-    public void sendConfigurationMessageToClient(ServerConfigurationPacketListenerImpl handler, AbstractMessage<?> message) {
-        if (!classTypes.containsKey(message.getClass())) {
-            throw new RegistryMessageException("Message " + message.getMessageType().getChannelIdWithNamespace() + " not registered");
-        }
+    /** Resolves the registered prototype of {@code message} and stamps its channel id onto it. */
+    private AbstractMessage<?> prototypeOf(AbstractMessage<?> message) {
         MessageType messageType = getMessageTypeByClass(message);
         if (messageType == null) {
             throw new RegistryMessageException("Message " + message.getMessageType().getChannelIdWithNamespace() + " not registered");
         }
+        AbstractMessage<?> prototype = messages.get(messageType);
+        message.updateProperties(messageType, prototype.type());
+        return prototype;
+    }
 
-        AbstractMessage abstractMessage = messages.get(messageType);
-        message.updateProperties(messageType, abstractMessage.type());
+    private static byte[] serialize(AbstractMessage<?> prototype, AbstractMessage<?> message) {
+        ByteBuf buf = MessageCodec.encode(prototype, message);
+        try {
+            byte[] bytes = new byte[buf.readableBytes()];
+            buf.readBytes(bytes);
+            return bytes;
+        } finally {
+            buf.release();
+        }
+    }
 
-        ServerConfigurationNetworking.send(handler, message);
+    // One buffer per recipient: the connection releases the buffer it is handed.
+    private static void sendTo(ServerPlayer player, ResourceLocation id, byte[] bytes) {
+        ServerPlayNetworking.send(player, id, new FriendlyByteBuf(Unpooled.wrappedBuffer(bytes)));
     }
 
     public void sendMessageToClient(AbstractMessage<?> message) {
         sendMessageToClient(null, message);
     }
 
-    @SuppressWarnings("unchecked")
     public void sendMessageToClient(ServerPlayer player, AbstractMessage<?> message) {
-        if (!classTypes.containsKey(message.getClass())) {
-            throw new RegistryMessageException("Message " + message.getMessageType().getChannelIdWithNamespace() + " not registered");
-        }
-        MessageType messageType = getMessageTypeByClass(message);
-        if (messageType == null) {
-            throw new RegistryMessageException("Message " + message.getMessageType().getChannelIdWithNamespace() + " not registered");
-        }
-
-        AbstractMessage abstractMessage = messages.get(messageType);
-        message.updateProperties(messageType, abstractMessage.type());
-
+        AbstractMessage<?> prototype = prototypeOf(message);
+        byte[] bytes = serialize(prototype, message);
         if (player == null) {
-            server.getPlayerList().getPlayers().forEach(p -> ServerPlayNetworking.send(p, message));
+            server.getPlayerList().getPlayers().forEach(p -> sendTo(p, message.type(), bytes));
             return;
         }
-        ServerPlayNetworking.send(player, message);
+        sendTo(player, message.type(), bytes);
     }
 
-    @SuppressWarnings("unchecked")
     public void sendMessageTrackerToClient(ServerPlayer player, AbstractMessage<?> message) {
-        MessageType messageType = getMessageTypeByClass(message);
-        if (messageType == null) {
-            throw new RegistryMessageException("Message " + message.getMessageType().getChannelIdWithNamespace() + " not registered");
-        }
-
-        AbstractMessage abstractMessage = messages.get(messageType);
-        message.updateProperties(messageType, abstractMessage.type());
-
+        AbstractMessage<?> prototype = prototypeOf(message);
+        byte[] bytes = serialize(prototype, message);
         if (player == null) {
-            server.getPlayerList().getPlayers().forEach(p -> ServerPlayNetworking.send(p, message));
+            server.getPlayerList().getPlayers().forEach(p -> sendTo(p, message.type(), bytes));
             return;
         }
-        PlayerLookup.tracking(player).forEach(p -> ServerPlayNetworking.send(p, message));
+        PlayerLookup.tracking(player).forEach(p -> sendTo(p, message.type(), bytes));
     }
 
     public Map<MessageType, AbstractMessage> getMessages() {

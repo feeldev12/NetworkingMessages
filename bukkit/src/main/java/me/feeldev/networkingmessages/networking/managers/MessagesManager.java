@@ -7,10 +7,15 @@ import me.feeldev.networkingmessages.networking.exceptions.RegistryMessageExcept
 import me.feeldev.networkingmessages.networking.models.AbstractMessage;
 import me.feeldev.networkingmessages.networking.common.IMessagesManager;
 import me.feeldev.networkingmessages.networking.common.MessageType;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -97,10 +102,46 @@ public class MessagesManager implements IMessagesManager<Player, AbstractMessage
             plugin.getServer().sendPluginMessage(plugin, namespace + messageType.getChannelId(), messageBytes);
             return;
         }
-        player.getTrackedBy().forEach(trackedPlayer -> trackedPlayer.sendPluginMessage(plugin, namespace + messageType.getChannelId(), messageBytes));
+        trackingPlayers(player).forEach(trackedPlayer -> trackedPlayer.sendPluginMessage(plugin, namespace + messageType.getChannelId(), messageBytes));
     }
 
     public MessageType getMessageTypeByClass(AbstractMessage<?> message) {
         return classTypes.get(message.getClass());
+    }
+
+    private static final Method GET_TRACKED_BY = findGetTrackedBy();
+
+    private static Method findGetTrackedBy() {
+        try {
+            return Entity.class.getMethod("getTrackedBy");
+        } catch (NoSuchMethodException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Players that are tracking {@code player} (excluding itself). {@code Entity#getTrackedBy} only
+     * exists from 1.20.2; on 1.20.1 it falls back to the players of the same world within the server
+     * view distance that can see it.
+     */
+    @SuppressWarnings("unchecked")
+    private Collection<? extends Player> trackingPlayers(Player player) {
+        if (GET_TRACKED_BY != null) {
+            try {
+                return (Collection<? extends Player>) GET_TRACKED_BY.invoke(player);
+            } catch (ReflectiveOperationException ignored) {
+                // fall through to the heuristic
+            }
+        }
+        double range = plugin.getServer().getViewDistance() * 16.0;
+        double rangeSquared = range * range;
+        List<Player> result = new ArrayList<>();
+        for (Player other : player.getWorld().getPlayers()) {
+            if (other.equals(player) || !other.canSee(player)) continue;
+            if (other.getLocation().distanceSquared(player.getLocation()) <= rangeSquared) {
+                result.add(other);
+            }
+        }
+        return result;
     }
 }

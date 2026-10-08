@@ -5,13 +5,8 @@ import me.feeldev.networkingmessages.networking.common.NetworkAPI;
 import me.feeldev.networkingmessages.networking.common.TypesManager;
 import me.feeldev.networkingmessages.networking.managers.MessagesManager;
 import me.feeldev.networkingmessages.networking.models.AbstractMessage;
-import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.ConfigurationTask;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.network.GatherLoginConfigurationTasksEvent;
-import net.minecraftforge.network.config.SimpleConfigurationTask;
 
 public class ServerAPI implements NetworkAPI<ServerPlayer, AbstractMessage<?>> {
     private final TypesManager typesManager;
@@ -27,11 +22,18 @@ public class ServerAPI implements NetworkAPI<ServerPlayer, AbstractMessage<?>> {
         this.messagesManager = new MessagesManager(server, namespace);
         this.compressionEnabled = false;
         CommonAPI.setNetworkAPI(this);
-        MinecraftForge.EVENT_BUS.addListener(this::onGatherLoginConfigurationTasks);
     }
 
     public void setServer(MinecraftServer server) {
         messagesManager.setServer(server);
+    }
+
+    /**
+     * Kept for source compatibility with the NeoForge build. The channels this library registers on
+     * Forge 1.20.1 already accept every version, including an absent channel, so a client can always
+     * join a server that lacks them (Bukkit, vanilla): this is a no-op.
+     */
+    public void setOptional(boolean optional) {
     }
 
     @Override
@@ -61,19 +63,5 @@ public class ServerAPI implements NetworkAPI<ServerPlayer, AbstractMessage<?>> {
     @Override
     public boolean isCompressionEnabled() {
         return compressionEnabled;
-    }
-
-    private void onGatherLoginConfigurationTasks(GatherLoginConfigurationTasksEvent event) {
-        typesManager.getMessageTypes().values().stream()
-            .filter(mt -> mt.isConfigurationPhase() && !mt.isServerListener())
-            .forEach(mt -> {
-                AbstractMessage<?> message = messagesManager.getMessages().get(mt);
-                if (message != null) {
-                    ConfigurationTask.Type taskType = new ConfigurationTask.Type(mt.getChannelIdWithNamespace());
-                    event.addTask(new SimpleConfigurationTask(taskType, ctx ->
-                        ctx.send(new ClientboundCustomPayloadPacket(message))
-                    ));
-                }
-            });
     }
 }
