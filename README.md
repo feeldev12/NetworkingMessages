@@ -34,6 +34,8 @@ dependencies {
 
 Each platform module already pulls in `java-common` (and `common` for Minecraft-based loaders) transitively.
 
+Shipping it in a mod? Shade and relocate it instead of `jarJar`/`include`: see [Bundling in a mod](#bundling-in-a-mod-shade--relocate-not-jar-in-jar).
+
 ## Quick start (Bukkit/Paper)
 
 Bukkit has no access to Minecraft's internal networking classes, so messages here implement `PluginMessageListener` directly and (de)serialize to `byte[]` via `FriendlyByteBuf`, this library's own Netty `ByteBuf` wrapper (varint/UTF/UUID helpers, plus optional gzip compression above a size threshold).
@@ -219,6 +221,91 @@ Same shared per-namespace `MessagesManager` as Forge: the mod constructor above 
 ClientAPI clientAPI = new ClientAPI("mymod");
 clientAPI.sendMessageToServer(new HelloMessage(MyModNeoForge.helloType, "hi from the client!"));
 ```
+
+## Bundling in a mod: shade + relocate, not jar-in-jar
+
+Ship this library **inside your mod's jar, relocated to your own package** (Shadow's `relocate`),
+instead of nesting it with Forge/NeoForge `jarJar` or Loom `include`.
+
+Why: several Nerion mods use this library, each pinned to its own build (`1.21-1.1.8b20`,
+`1.20.1-1.1.8b21`…). Nested jars are shared by the whole game, so mods end up negotiating one copy:
+different coordinates for the same package load twice (Forge/NeoForge refuse split packages),
+`jarJar` ranges that don't overlap fail, and on Forge 1.20.1 the `jarJar` output also has to be
+reobfuscated. A relocated copy is private to your mod: none of that can happen.
+
+### Recipe (Gradle, Shadow 8.3.6)
+
+```groovy
+// buildSrc/build.gradle (or root buildscript): put the task class on the classpath
+dependencies { implementation 'com.gradleup.shadow:shadow-gradle-plugin:8.3.6' }
+```
+
+```groovy
+// loader build.gradle
+configurations {
+    shade { canBeConsumed = false; canBeResolved = true; transitive = false }
+}
+
+dependencies {
+    // compile + dev runs, as usual (Fabric: modImplementation for the fabric module)
+    implementation "com.github.feeldev12.NetworkingMessages:forge:${nm_version}"
+    implementation "com.github.feeldev12.NetworkingMessages:java-common:${nm_version}"
+    // what goes into the shipped jar: the loader module + java-common, nothing else
+    shade "com.github.feeldev12.NetworkingMessages:forge:${nm_version}"
+    shade "com.github.feeldev12.NetworkingMessages:java-common:${nm_version}"
+}
+
+def modJar = tasks.named('jar', org.gradle.jvm.tasks.Jar)   // see the table below
+modJar.configure { archiveClassifier = 'unshaded' }
+def shadedJar = tasks.register('shadedJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
+    archiveClassifier = ''
+    dependsOn modJar
+    manifest.inheritFrom(modJar.get().manifest)
+    from({ zipTree(modJar.get().archiveFile) })
+    // `project.configurations`: inside ShadowJar, `configurations` is the task's own property
+    from({ project.configurations.shade.collect { zipTree(it) } }) {
+        // the library's own loader descriptors and its empty marker @Mod: it's your mod's code now
+        exclude 'fabric.mod.json', 'META-INF/mods.toml', 'META-INF/neoforge.mods.toml',
+                'me/feeldev/networkingmessages/NetworkingMessagesForge*.class',
+                'META-INF/MANIFEST.MF', 'META-INF/maven/**', 'META-INF/versions/**', 'module-info.class'
+    }
+    relocate 'me.feeldev.networkingmessages', 'com.example.mymod.shaded.networkingmessages'
+    // relocation leaves the original folders behind, empty: drop them (Forge/NeoForge would
+    // otherwise see the original package in your jar)
+    doLast {
+        def jar = archiveFile.get().asFile.toPath()
+        java.nio.file.FileSystems.newFileSystem(jar, (ClassLoader) null).withCloseable { fs ->
+            def dirs = java.nio.file.Files.walk(fs.getPath('/')).withCloseable { it.filter { java.nio.file.Files.isDirectory(it) }.toList() }
+            dirs.sort { -it.nameCount }.each { dir ->
+                if (dir.nameCount > 0 && java.nio.file.Files.list(dir).withCloseable { !it.findAny().isPresent() }) {
+                    java.nio.file.Files.delete(dir)
+                }
+            }
+        }
+    }
+}
+tasks.named('assemble') { dependsOn shadedJar }
+```
+
+Shade **after** the loader has produced its final jar, so the library and your classes use the
+same names at runtime:
+
+| Loader | `modJar` | Notes |
+|---|---|---|
+| Fabric (any MC) | `remapJar` | The published `fabric` module is already in intermediary names. Compile with `modImplementation`. |
+| Forge 1.21 / NeoForge | `jar` | Mojang names at runtime, like the published modules. |
+| Forge 1.20.1 | `jar`, plus `tasks.named('shadedJar') { dependsOn 'reobfJar' }` | `reobfJar` rewrites `jar` in place (SRG); the published `forge` module is SRG too. Compile with `implementation fg.deobf(...)` and add `java-common` as `minecraftLibrary` for dev runs. |
+
+Rules of thumb:
+
+- Ship the jar without classifier; `-unshaded` is only the intermediate step.
+- The relocation prefix must be unique to your mod (`<your package>.shaded`).
+- Keep one channel namespace per mod (`new ServerAPI(server, "mymod")`): relocated copies don't share
+  `MessagesManager.forNamespace(...)` registries, so two mods must never register the same channel id.
+- Paper/Bukkit plugins already shade (Shadow on the `bukkit` module); relocate there too.
+
+Reference implementation: NerionLive (`buildSrc/src/main/groovy/multiloader-loader.gradle`,
+`registerShadedJar`), Fabric/Forge/NeoForge on 1.21 and Fabric/Forge on 1.20.1.
 
 ## License
 
