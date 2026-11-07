@@ -23,6 +23,9 @@ import java.util.zip.GZIPOutputStream;
 
 public class FriendlyByteBuf extends ByteBuf {
 
+    /** Largest size compressed data may inflate to (8 MiB); the other side controls it. */
+    public static final int MAX_DECOMPRESSED_BYTES = 8 * 1024 * 1024;
+
     private final ByteBuf buf;
     private boolean compressed;
 
@@ -71,12 +74,7 @@ public class FriendlyByteBuf extends ByteBuf {
             if ((b1 == (byte) 0x1F) && (b2 == (byte) 0x8B)) {
                 byte[] compressed = new byte[input.readableBytes()];
                 input.readBytes(compressed);
-                try (GZIPInputStream gzipIn = new GZIPInputStream(new ByteArrayInputStream(compressed))) {
-                    byte[] decompressed = gzipIn.readAllBytes();
-                    return Unpooled.wrappedBuffer(decompressed);
-                } catch (IOException e) {
-                    throw new RuntimeException("Failed to decompress GZIP data", e);
-                }
+                return Unpooled.wrappedBuffer(inflate(compressed));
             }
         }
         return input;
@@ -123,6 +121,7 @@ public class FriendlyByteBuf extends ByteBuf {
 
     public byte[] readByteArray(int i) {
         int j = readVarInt();
+        checkLength(j);
         if (j > i) {
             throw new DecoderException("ByteArray with size " + j + " is bigger than allowed " + i);
         } else {
@@ -173,6 +172,7 @@ public class FriendlyByteBuf extends ByteBuf {
         if (j < 0) {
             throw new DecoderException("The received encoded string buffer length is less than zero! Weird string!");
         }
+        checkLength(j);
 
         byte[] data = new byte[j];
         readBytes(data);
@@ -1142,15 +1142,31 @@ public class FriendlyByteBuf extends ByteBuf {
     }
 
     private static byte[] gunzip(byte[] input) {
-        try (ByteArrayInputStream bais = new ByteArrayInputStream(input);
-             GZIPInputStream gzip = new GZIPInputStream(bais);
-             ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+        return inflate(input);
+    }
 
-            gzip.transferTo(baos);
-            return baos.toByteArray();
+    /** A length read from the wire must fit in what actually arrived, or nothing is allocated. */
+    private void checkLength(int length) {
+        if (length > readableBytes()) {
+            throw new DecoderException("Length " + length + " is bigger than the " + readableBytes() + " readable bytes");
+        }
+    }
 
+    /** Gunzips {@code input}, refusing to inflate past {@link #MAX_DECOMPRESSED_BYTES}. */
+    private static byte[] inflate(byte[] input) {
+        try (GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(input))) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream(Math.min(input.length * 4, MAX_DECOMPRESSED_BYTES));
+            byte[] chunk = new byte[8192];
+            int read;
+            while ((read = gzip.read(chunk)) != -1) {
+                if (out.size() + read > MAX_DECOMPRESSED_BYTES) {
+                    throw new DecoderException("GZIP data inflates past " + MAX_DECOMPRESSED_BYTES + " bytes");
+                }
+                out.write(chunk, 0, read);
+            }
+            return out.toByteArray();
         } catch (IOException e) {
-            throw new RuntimeException("Failed to decompress UTF string", e);
+            throw new DecoderException("Failed to decompress GZIP data", e);
         }
     }
 }
