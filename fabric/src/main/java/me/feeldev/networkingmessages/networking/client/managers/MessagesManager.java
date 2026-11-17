@@ -72,14 +72,20 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
         return messages;
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public void sendMessageToServer(AbstractMessage<?> abstractMessage) {
-        if (!classTypes.containsKey(abstractMessage.getClass())) {
-            throw new RegistryMessageException("Message " + abstractMessage.getMessageType().getChannelIdWithNamespace() + " not registered");
+        MessageType messageType = classTypes.get(abstractMessage.getClass());
+        if (messageType == null) {
+            throw new RegistryMessageException("Message " + abstractMessage.getClass().getSimpleName() + " not registered");
         }
-        if (!abstractMessage.getMessageType().isServerListener()) {
-            throw new RegistryMessageException("Message " + abstractMessage.getMessageType().getChannelIdWithNamespace() + " is not a server listener");
+        if (!messageType.isServerListener()) {
+            throw new RegistryMessageException("Message " + messageType.getChannelIdWithNamespace() + " is not a server listener");
         }
-        if (abstractMessage.getMessageType().isConfigurationPhase()) {
+
+        AbstractMessage registered = messages.get(messageType);
+        abstractMessage.updateProperties(messageType, registered.type());
+
+        if (messageType.isConfigurationPhase()) {
             ClientConfigurationNetworking.send(abstractMessage);
         } else {
             ClientPlayNetworking.send(abstractMessage);

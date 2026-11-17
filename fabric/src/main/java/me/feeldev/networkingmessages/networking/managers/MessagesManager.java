@@ -101,9 +101,11 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
         });
         messages.clear();
         classTypes.clear();
-        globallyRegisteredS2C.clear();
-        globallyRegisteredC2S.clear();
-        AbstractMessage.getClassInstances().clear();
+        if (server.isDedicatedServer()) {
+            globallyRegisteredS2C.clear();
+            globallyRegisteredC2S.clear();
+            AbstractMessage.getClassInstances().clear();
+        }
     }
 
     @SuppressWarnings("unchecked")

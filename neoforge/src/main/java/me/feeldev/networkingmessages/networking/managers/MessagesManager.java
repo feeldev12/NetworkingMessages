@@ -136,7 +136,9 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
     public void unregister() {
         messages.clear();
         classTypes.clear();
-        AbstractMessage.getClassInstances().clear();
+        if (server != null && server.isDedicatedServer()) {
+            AbstractMessage.getClassInstances().clear();
+        }
     }
 
     public Map<MessageType, AbstractMessage<?>> getMessages() {
