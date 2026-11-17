@@ -20,6 +20,7 @@ public class ServerAPI implements NetworkAPI<ServerPlayer, AbstractMessage<?>> {
     private final TypesManager typesManager;
     private final MessagesManager messagesManager;
     private boolean compressionEnabled;
+    private boolean optional;
 
     /**
      * Use during mod initialization (e.g. inside your {@code @Mod} constructor). This does
@@ -52,8 +53,15 @@ public class ServerAPI implements NetworkAPI<ServerPlayer, AbstractMessage<?>> {
         CommonAPI.setNetworkAPI(this);
     }
 
+    public void setOptional(boolean optional) {
+        this.optional = optional;
+    }
+
     public void onRegisterPayloads(RegisterPayloadHandlersEvent event) {
         var registrar = event.registrar(messagesManager.getNamespace());
+        if (optional) {
+            registrar = registrar.optional();
+        }
         messagesManager.flush(registrar);
         messagesManager.flushConfig(registrar);
     }
