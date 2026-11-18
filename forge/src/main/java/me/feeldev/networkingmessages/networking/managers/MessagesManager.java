@@ -160,6 +160,12 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
 
     @Override
     public void unregister() {
+        // On an integrated server the client shares this manager and these registries (it sends
+        // through forNamespace and receives through REGISTRATIONS): clearing them when the local
+        // world closes would leave the client unable to talk to the next server it joins.
+        if (server != null && !server.isDedicatedServer()) {
+            return;
+        }
         messages.values().forEach(message -> REGISTRATIONS.remove(message.type()));
         messages.clear();
         classTypes.clear();

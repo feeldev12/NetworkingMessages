@@ -77,7 +77,10 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
         });
         messages.clear();
         classTypes.clear();
-        AbstractMessage.getClassInstances().clear();
+        // Shared with the client in the same JVM on an integrated server: it still needs them.
+        if (server.isDedicatedServer()) {
+            AbstractMessage.getClassInstances().clear();
+        }
     }
 
     /** Resolves the registered prototype of {@code message} and stamps its channel id onto it. */
