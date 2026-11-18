@@ -71,7 +71,7 @@ public class MessagesManager implements IMessagesManager<ServerPlayer, AbstractM
     public void sendMessageToServer(AbstractMessage<?> abstractMessage) {
         MessageType messageType = classTypes.get(abstractMessage.getClass());
         if (messageType == null) {
-            throw new RegistryMessageException("Message " + abstractMessage.getMessageType().getChannelIdWithNamespace() + " not registered");
+            throw new RegistryMessageException("Message " + abstractMessage.getClass().getName() + " not registered");
         }
         if (!messageType.isServerListener()) {
             throw new RegistryMessageException("Message " + messageType.getChannelIdWithNamespace() + " is not a server listener");
